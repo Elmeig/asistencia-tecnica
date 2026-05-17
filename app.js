@@ -1,0 +1,436 @@
+// Base path for proxied deployment
+const BASE_PATH = '/asistencia';
+const API = window.location.origin + BASE_PATH;
+
+let records = [];
+let filteredRecords = [];
+let editingId = null;
+let sidebarOpen = false;
+
+// DOM References
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// Loading overlay
+function showLoading() { $('.loading-overlay').classList.add('visible'); }
+function hideLoading() { $('.loading-overlay').classList.remove('visible'); }
+
+// Toast notifications
+function showToast(message, type = 'success') {
+    const container = $('#toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// Load records from API
+async function loadRecords() {
+    showLoading();
+    try {
+        const res = await fetch(API + '/api/records');
+        if (!res.ok) throw new Error(res.statusText);
+        records = await res.json();
+        applyFilters();
+        updateStats();
+        populateFilterDropdowns();
+        populateDatalists();
+    } catch (e) {
+        console.error('Error loading records:', e);
+        showToast('Error al cargar registros', 'error');
+    }
+    hideLoading();
+}
+
+// Update stats in header
+function updateStats() {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+
+    const monthCount = records.filter(r => {
+        if (!r.date) return false;
+        const d = new Date(r.date);
+        return d.getMonth() === month && d.getFullYear() === year;
+    }).length;
+
+    $('#stat-total').textContent = 'Total: ' + records.length;
+    $('#stat-month').textContent = 'Mes: ' + monthCount;
+}
+
+// Populate filter dropdowns
+function populateFilterDropdowns() {
+    const clients = [...new Set(records.map(r => r.client).filter(Boolean))].sort();
+    const machines = [...new Set(records.map(r => r.machine).filter(Boolean))].sort();
+    const techs = [...new Set(records.map(r => r.tech).filter(Boolean))].sort();
+
+    const fillSelect = (id, items) => {
+        const sel = $(id);
+        const current = sel.value;
+        sel.innerHTML = '<option value="">Todos</option>';
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            opt.textContent = item;
+            sel.appendChild(opt);
+        });
+        sel.value = current;
+    };
+
+    fillSelect('#filter-client', clients);
+    fillSelect('#filter-machine', machines);
+    fillSelect('#filter-tech', techs);
+}
+
+// Populate datalists for autocomplete
+function populateDatalists() {
+    const clients = [...new Set(records.map(r => r.client).filter(Boolean))].sort();
+    const machines = [...new Set(records.map(r => r.machine).filter(Boolean))].sort();
+
+    const fillDatalist = (id, items) => {
+        const dl = $(id);
+        dl.innerHTML = '';
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            dl.appendChild(opt);
+        });
+    };
+
+    fillDatalist('#list-clients', clients);
+    fillDatalist('#list-machines', machines);
+}
+
+// Apply all filters
+function applyFilters() {
+    const clientFilter = $('#filter-client').value;
+    const machineFilter = $('#filter-machine').value;
+    const techFilter = $('#filter-tech').value;
+    const dateFrom = $('#filter-date-from').value;
+    const dateTo = $('#filter-date-to').value;
+    const searchQuery = ($('#global-search-input').value || '').toLowerCase().trim();
+
+    filteredRecords = records.filter(r => {
+        if (clientFilter && r.client !== clientFilter) return false;
+        if (machineFilter && r.machine !== machineFilter) return false;
+        if (techFilter && r.tech !== techFilter) return false;
+        if (dateFrom && r.date < dateFrom) return false;
+        if (dateTo && r.date > dateTo) return false;
+        if (searchQuery) {
+            const searchable = [r.client, r.machine, r.tech, r.comments, r.date]
+                .filter(Boolean).join(' ').toLowerCase();
+            if (!searchable.includes(searchQuery)) return false;
+        }
+        return true;
+    });
+
+    // Sort by date descending
+    filteredRecords.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    renderRecords();
+}
+
+// Render filtered records to the DOM
+function renderRecords() {
+    const container = $('#records-container');
+    container.innerHTML = '';
+
+    if (!filteredRecords.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">\uD83D\uDCCB</div>
+                <p>No se encontraron registros</p>
+            </div>`;
+        return;
+    }
+
+    filteredRecords.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'record-row';
+        row.dataset.id = r.id;
+
+        const expanded = editingId && editingId === r.id;
+
+        row.innerHTML = `
+            <div class="record-header" data-id="${r.id}">
+                <div class="record-header-left">
+                    <span class="record-date">${r.date || ''}</span>
+                    <span class="record-tech">${r.tech || ''}</span>
+                    <span class="record-machine">${r.machine || ''}</span>
+                    <span>${r.client || ''}</span>
+                </div>
+                <span class="record-toggle" data-id="${r.id}">\u25BC</span>
+            </div>
+            <div class="record-body ${expanded ? 'expanded' : ''}" data-id="${r.id}">
+                <div class="record-comments">${escapeHtml(r.comments || '')}</div>
+                <div class="record-actions">
+                    <button class="btn-icon btn-edit" data-id="${r.id}" title="Editar">\u270F\uFE0F</button>
+                    <button class="btn-icon btn-delete" data-id="${r.id}" title="Eliminar">\uD83D\uDDD1\uFE0F</button>
+                </div>
+            </div>`;
+
+        container.appendChild(row);
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Toggle record body expansion
+function toggleRecord(id) {
+    const body = $(`.record-body[data-id="${id}"]`);
+    const toggle = $(`.record-toggle[data-id="${id}"]`);
+    if (body && toggle) {
+        body.classList.toggle('expanded');
+        toggle.classList.toggle('expanded');
+    }
+}
+
+// Open modal for add or edit
+function openModal(id) {
+    editingId = id || null;
+    const overlay = $('#modal-record');
+    overlay.classList.add('visible');
+
+    if (editingId) {
+        $('#modal-title').textContent = 'Editar Asistencia';
+        const rec = records.find(r => r.id === editingId);
+        if (rec) {
+            $('#form-client').value = rec.client || '';
+            $('#form-machine').value = rec.machine || '';
+            $('#form-date').value = rec.date || '';
+            $('#form-tech').value = rec.tech || '';
+            $('#form-comments').value = rec.comments || '';
+        }
+    } else {
+        $('#modal-title').textContent = 'Nueva Asistencia';
+        $('#record-form').reset();
+        const today = new Date().toISOString().split('T')[0];
+        $('#form-date').value = today;
+    }
+}
+
+function closeModal() {
+    $('#modal-record').classList.remove('visible');
+    editingId = null;
+}
+
+// Save record (create or update)
+async function saveRecord(e) {
+    e.preventDefault();
+    const data = {
+        client: $('#form-client').value.trim(),
+        machine: $('#form-machine').value.trim(),
+        date: $('#form-date').value.trim(),
+        tech: $('#form-tech').value.trim(),
+        comments: $('#form-comments').value.trim(),
+    };
+
+    showLoading();
+    try {
+        let res;
+        if (editingId) {
+            res = await fetch(API + '/api/records/' + editingId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+        } else {
+            res = await fetch(API + '/api/records', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+        }
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || res.statusText);
+        }
+
+        closeModal();
+        await loadRecords();
+        showToast(editingId ? 'Registro actualizado' : 'Registro creado', 'success');
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+    hideLoading();
+}
+
+// Delete record
+async function deleteRecord(id) {
+    if (!confirm('\u00BFEliminar este registro?')) return;
+
+    showLoading();
+    try {
+        const res = await fetch(API + '/api/records/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Error al eliminar');
+        await loadRecords();
+        showToast('Registro eliminado', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+    hideLoading();
+}
+
+// Export to Excel (CSV)
+function exportToCSV() {
+    const data = filteredRecords.length ? filteredRecords : records;
+    if (!data.length) {
+        showToast('No hay datos para exportar', 'error');
+        return;
+    }
+
+    const headers = ['Fecha', 'Cliente', 'Maquina', 'Tecnico', 'Comentarios'];
+    const rows = data.map(r =>
+        [r.date, r.client, r.machine, r.tech, (r.comments || '').replace(/\n/g, ' ')]
+            .map(v => '"' + (v || '').replace(/"/g, '""') + '"')
+            .join(',')
+    );
+
+    const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `asistencia_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Exportado correctamente', 'success');
+}
+
+// Toggle sidebar
+function toggleSidebar() {
+    sidebarOpen = !sidebarOpen;
+    $('#sidebar').classList.toggle('open');
+    $('#sidebar-backdrop').classList.toggle('visible');
+}
+
+function closeSidebar() {
+    sidebarOpen = false;
+    $('#sidebar').classList.remove('open');
+    $('#sidebar-backdrop').classList.remove('visible');
+}
+
+// Toggle theme
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    $('#btn-theme').textContent = isDark ? '\u2600\uFE0F' : '\uD83C\uDF19';
+}
+
+// ====== EVENT LISTENERS ======
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Load initial data
+    loadRecords();
+
+    // Header: sidebar toggle
+    const btnToggle = $('#btn-sidebar-toggle');
+    if (btnToggle) btnToggle.addEventListener('click', toggleSidebar);
+
+    // Header: add record
+    const btnAdd = $('#btn-add-record');
+    if (btnAdd) btnAdd.addEventListener('click', () => openModal());
+
+    // Header: theme toggle
+    const btnTheme = $('#btn-theme');
+    if (btnTheme) btnTheme.addEventListener('click', toggleTheme);
+
+    // Header: search
+    const searchInput = $('#global-search-input');
+    const searchClear = $('#global-search-clear');
+    if (searchInput) {
+        let debounce;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounce);
+            debounce = setTimeout(applyFilters, 300);
+            searchClear.style.display = searchInput.value ? 'inline' : 'none';
+        });
+    }
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            searchInput.value = '';
+            searchClear.style.display = 'none';
+            applyFilters();
+        });
+    }
+
+    // Sidebar: close
+    const btnClose = $('#btn-sidebar-close');
+    if (btnClose) btnClose.addEventListener('click', closeSidebar);
+
+    // Sidebar: backdrop click
+    const backdrop = $('#sidebar-backdrop');
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+    // Sidebar: filters
+    $('#filter-client').addEventListener('change', applyFilters);
+    $('#filter-machine').addEventListener('change', applyFilters);
+    $('#filter-tech').addEventListener('change', applyFilters);
+    $('#filter-date-from').addEventListener('change', applyFilters);
+    $('#filter-date-to').addEventListener('change', applyFilters);
+
+    // Clear filters
+    const btnClear = $('#btn-clear-filters');
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            $('#filter-client').value = '';
+            $('#filter-machine').value = '';
+            $('#filter-tech').value = '';
+            $('#filter-date-from').value = '';
+            $('#filter-date-to').value = '';
+            applyFilters();
+            showToast('Filtros limpiados');
+        });
+    }
+
+    // Export
+    const btnExport = $('#btn-export');
+    if (btnExport) btnExport.addEventListener('click', exportToCSV);
+
+    // Modal: close
+    const btnCancel = $('#btn-cancel-modal');
+    if (btnCancel) btnCancel.addEventListener('click', closeModal);
+
+    const btnModalClose = $('#btn-modal-close');
+    if (btnModalClose) btnModalClose.addEventListener('click', closeModal);
+
+    // Modal: overlay click
+    $('#modal-record').addEventListener('click', (e) => {
+        if (e.target === $('#modal-record')) closeModal();
+    });
+
+    // Record form submit
+    $('#record-form').addEventListener('submit', saveRecord);
+
+    // Record list: click headers (expand) and action buttons
+    $('#records-container').addEventListener('click', (e) => {
+        const header = e.target.closest('.record-header');
+        const editBtn = e.target.closest('.btn-edit');
+        const deleteBtn = e.target.closest('.btn-delete');
+
+        if (editBtn) {
+            e.stopPropagation();
+            openModal(editBtn.dataset.id);
+        } else if (deleteBtn) {
+            e.stopPropagation();
+            deleteRecord(deleteBtn.dataset.id);
+        } else if (header) {
+            toggleRecord(header.dataset.id);
+        }
+    });
+
+    // Keyboard: Escape closes modals/sidebar
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if ($('#modal-record').classList.contains('visible')) closeModal();
+            else if (sidebarOpen) closeSidebar();
+        }
+    });
+});
