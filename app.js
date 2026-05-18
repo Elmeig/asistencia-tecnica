@@ -57,6 +57,25 @@ function updateStats() {
     $('#stat-month').textContent = 'Mes: ' + monthCount;
 }
 
+// Get technician color class
+function getTechColorClass(techName) {
+    if (!techName) return '';
+    const name = techName.toUpperCase().split('/')[0].trim(); // Handle combined names like "MEHDI/JESUS"
+    const techColors = {
+        'RICARDO': 'tech-ricardo',
+        'MEHDI': 'tech-mehdi', 
+        'JAIME': 'tech-jaime',
+        'JESUS': 'tech-jesus',
+        'AMIN': 'tech-amin',
+        'MARCELO': 'tech-marcelo',
+        'TAMARA': 'tech-tamara',
+        'FELIX': 'tech-felix',
+        'FRAN': 'tech-fran',
+        'VICTOR': 'tech-victor'
+    };
+    return techColors[name] || '';
+}
+
 // Populate filter dropdowns
 function populateFilterDropdowns() {
     var clients = [...new Set(records.map(function(r) { return r.client; }).filter(Boolean))].sort();
@@ -131,38 +150,39 @@ function applyFilters() {
     renderRecords();
 }
 
-// Render filtered records to the DOM
+// Render filtered records to the DOM with new card design
 function renderRecords() {
     var container = $('#records-container');
     container.innerHTML = '';
 
     if (!filteredRecords.length) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">\ud83d\udccb</div><p>No se encontraron registros</p></div>';
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No se encontraron registros</p></div>';
         return;
     }
 
     filteredRecords.forEach(function(r) {
         var row = document.createElement('div');
-        row.className = 'record-row';
+        row.className = 'record-card';
         row.dataset.id = r.id;
 
-        var expanded = editingId && editingId === r.id;
+        var techColorClass = getTechColorClass(r.tech);
 
         row.innerHTML =
-            '<div class="record-header" data-id="' + r.id + '">' +
-                '<div class="record-header-left">' +
-                    '<span class="record-date">' + (r.date || '') + '</span>' +
-                    '<span class="record-tech">' + (r.tech || '') + '</span>' +
-                    '<span class="record-machine">' + (r.machine || '') + '</span>' +
-                    '<span>' + (r.client || '') + '</span>' +
+            '<div class="record-card-header" data-id="' + r.id + '">' +
+                '<div class="card-info-left">' +
+                    '<div class="client-name">' + (r.client || '') + '</div>' +
+                    '<div class="machine-name">' + (r.machine || '') + '</div>' +
                 '</div>' +
-                '<span class="record-toggle" data-id="' + r.id + '">\u25BC</span>' +
+                '<div class="card-info-right">' +
+                    '<div class="tech-name ' + techColorClass + '">' + (r.tech || '') + '</div>' +
+                    '<div class="record-date">' + (r.date || '') + '</div>' +
+                '</div>' +
             '</div>' +
-            '<div class="record-body' + (expanded ? ' expanded' : '') + '" data-id="' + r.id + '">' +
+            '<div class="record-card-body">' +
                 '<div class="record-comments">' + escapeHtml(r.comments || '') + '</div>' +
                 '<div class="record-actions">' +
-                    '<button class="btn-icon btn-edit" data-id="' + r.id + '" title="Editar">\u270F\uFE0F</button>' +
-                    '<button class="btn-icon btn-delete" data-id="' + r.id + '" title="Eliminar">\ud83d\uddd1\ufe0f</button>' +
+                    '<button class="btn-icon btn-edit" data-id="' + r.id + '" title="Editar">✏️</button>' +
+                    '<button class="btn-icon btn-delete" data-id="' + r.id + '" title="Eliminar">🗑️</button>' +
                 '</div>' +
             '</div>';
 
@@ -174,16 +194,6 @@ function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
-
-// Toggle record body expansion
-function toggleRecord(id) {
-    var body = $('.record-body[data-id="' + id + '"]');
-    var toggle = $('.record-toggle[data-id="' + id + '"]');
-    if (body && toggle) {
-        body.classList.toggle('expanded');
-        toggle.classList.toggle('expanded');
-    }
 }
 
 // Open modal for add or edit
@@ -259,7 +269,7 @@ async function saveRecord(e) {
 
 // Delete record
 async function deleteRecord(id) {
-    if (!confirm('\u00BFEliminar este registro?')) return;
+    if (!confirm('¿Eliminar este registro?')) return;
 
     showLoading();
     try {
@@ -318,7 +328,7 @@ function toggleTheme() {
     var html = document.documentElement;
     var isDark = html.getAttribute('data-theme') === 'dark';
     html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    $('#btn-theme').textContent = isDark ? '\u2600\uFE0F' : '\ud83c\udf19';
+    $('#btn-theme').textContent = isDark ? '☀️' : '🌙';
 }
 
 // ====== EVENT LISTENERS ======
@@ -406,9 +416,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Record form submit
     $('#record-form').addEventListener('submit', saveRecord);
 
-    // Record list: click headers (expand) and action buttons
+    // Record list: click action buttons (no toggle - always visible comments)
     $('#records-container').addEventListener('click', function(e) {
-        var header = e.target.closest('.record-header');
         var editBtn = e.target.closest('.btn-edit');
         var deleteBtn = e.target.closest('.btn-delete');
 
@@ -418,8 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (deleteBtn) {
             e.stopPropagation();
             deleteRecord(deleteBtn.dataset.id);
-        } else if (header) {
-            toggleRecord(header.dataset.id);
         }
     });
 
