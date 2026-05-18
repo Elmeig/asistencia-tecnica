@@ -7595,15 +7595,6 @@
       "tech": "RICARDO",
       "comments": "Actualizar a la version 15.2.16.0 (de la 15.2.10.0) para corregir fallo de Softlens pillado en M74",
       "createdAt": "2026-05-14"
-    },
-    {
-      "id": "b9a4708c-492e-480f-97ea-014294bdad3d",
-      "client": "SILVER LINE",
-      "machine": "R400-175",
-      "date": "2026-05-18",
-      "tech": "MEHDI",
-      "comments": "Dado de alta el diseño de Alexa Ar",
-      "createdAt": "2026-05-18"
     }
   ],
   "clients": {
@@ -7614,8 +7605,7 @@
       "R300-071"
     ],
     "AJL": [
-      "R400-082",
-      "R500-250"
+      "R400-082"
     ],
     "ANDREA": [
       "R300-033"

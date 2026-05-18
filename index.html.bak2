@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Registro Asistencia Técnica</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/asistencia/styles.css?v=23.0">
 </head>
 <body>
     <div id="app">
@@ -14,7 +14,6 @@
             <div class="header-left">
                 <button class="btn-sidebar-toggle" id="btn-sidebar-toggle" aria-label="Menu">☰</button>
                 <div class="header-brand">
-                    <div class="logo-wrench">🔧</div>
                     <span class="logo-text">Asistencia Técnica</span>
                 </div>
                 <div class="header-stats" id="header-stats">
@@ -27,12 +26,8 @@
                     ➕ Nueva
                 </button>
             </div>
-            <div class="header-right">
-                <div class="header-search">
-                    <span class="header-search-icon">🔍</span>
-                    <input type="text" id="global-search-input" placeholder="Buscar en comentarios..." autocomplete="off">
-                    <span id="global-search-clear" style="display:none">&times;</span>
-                </div>
+
+            <div class="header-right" id="theme-wrapper">
                 <button id="btn-theme" class="theme-btn" title="Cambiar tema">🌙</button>
             </div>
         </header>
@@ -41,42 +36,46 @@
         <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
 
         <!-- Sidebar (filtros) -->
-        <div class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h3>Filtros</h3>
-                <button class="btn-sidebar-close" id="btn-sidebar-close">&times;</button>
+                <h3>🔍 Filtros</h3>
+                <button class="btn-sidebar-close" id="btn-sidebar-close" aria-label="Cerrar filtros">&times;</button>
             </div>
             <div class="sidebar-content">
-                <div class="filter-group">
-                    <label>Cliente</label>
-                    <select id="filter-client">
-                        <option value="">Todos los clientes</option>
-                    </select>
+                <div class="filter-inner">
+                    <div class="filter-group">
+                        <label>👤 Cliente</label>
+                        <input type="text" id="filter-client" class="filter-ac-input" placeholder="Todos los clientes" autocomplete="off">
+                        <div class="filter-ac-dd" id="client-dd"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-machine">⚙️ Máquina</label>
+                        <select id="filter-machine">
+                            <option value="">Todas las máquinas</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>🔧 Técnico</label>
+                        <input type="text" id="filter-tech" class="filter-ac-input" placeholder="Todos los técnicos" autocomplete="off">
+                        <div class="filter-ac-dd" id="tech-dd"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-date-from">📅 Desde</label>
+                        <input type="date" id="filter-date-from">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-date-to">📅 Hasta</label>
+                        <input type="date" id="filter-date-to">
+                    </div>
+                    <button class="btn-secondary btn-sm" id="btn-clear-filters" style="width:100%;margin-top:0.5rem">
+                        🗑️ Limpiar filtros
+                    </button>
+                    <button class="btn-export" id="btn-export" style="width:100%;margin-top:0.5rem">
+                        📊 Exportar Excel
+                    </button>
                 </div>
-                <div class="filter-group">
-                    <label>M&aacute;quina</label>
-                    <select id="filter-machine">
-                        <option value="">Todas las m&aacute;quinas</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>T&eacute;cnico</label>
-                    <select id="filter-tech">
-                        <option value="">Todos los t&eacute;cnicos</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Desde</label>
-                    <input type="date" id="filter-date-from">
-                </div>
-                <div class="filter-group">
-                    <label>Hasta</label>
-                    <input type="date" id="filter-date-to">
-                </div>
-                <button class="btn-secondary btn-sm" id="btn-clear-filters" style="width:100%;margin-top:0.8rem">Limpiar filtros</button>
-                <button class="btn-export" id="btn-export" style="width:100%;margin-top:0.5rem">&#128202; Exportar Excel</button>
             </div>
-        </div>
+        </aside>
 
         <!-- Main Content -->
         <main class="main">
@@ -87,40 +86,40 @@
         <div class="modal-overlay" id="modal-record">
             <div class="modal-dialog">
                 <div class="modal-header">
-                    <h2 id="modal-title">Nueva Asistencia</h2>
-                    <button class="btn-modal-close" id="btn-modal-close">&times;</button>
+                    <h2 id="modal-title">📝 Nueva Asistencia</h2>
+                    <button class="btn-modal-close" id="btn-modal-close" aria-label="Cerrar">&times;</button>
                 </div>
                 <form id="record-form" class="modal-form">
                     <div class="form-group">
-                        <label for="form-client">Cliente</label>
+                        <label for="form-client">👤 Cliente</label>
                         <input type="text" id="form-client" name="client" list="list-clients" required autocomplete="off" placeholder="Nombre del cliente">
                         <datalist id="list-clients"></datalist>
                     </div>
                     <div class="form-group">
-                        <label for="form-machine">M&aacute;quina</label>
+                        <label for="form-machine">⚙️ Máquina</label>
                         <input type="text" id="form-machine" name="machine" list="list-machines" required autocomplete="off" placeholder="Ej: R400-136">
                         <datalist id="list-machines"></datalist>
                     </div>
                     <div class="form-group">
-                        <label for="form-date">Fecha</label>
+                        <label for="form-date">📅 Fecha</label>
                         <input type="date" id="form-date" name="date" required>
                     </div>
                     <div class="form-group">
-                        <label for="form-tech">T&eacute;cnico</label>
+                        <label for="form-tech">🔧 Técnico</label>
                         <select id="form-tech" name="tech" required>
-                            <option value="">Seleccionar...</option>
+                            <option value="">Seleccionar técnico...</option>
                             <option value="RICARDO">Ricardo</option>
                             <option value="MEHDI">Mehdi</option>
                             <option value="JAIME">Jaime</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="form-comments">Comentarios</label>
-                        <textarea id="form-comments" name="comments" rows="5" required placeholder="Describe la asistencia realizada..."></textarea>
+                        <label for="form-comments">💬 Comentarios</label>
+                        <textarea id="form-comments" name="comments" rows="6" required placeholder="Describe detalladamente la asistencia realizada, problemas encontrados, soluciones aplicadas, repuestos utilizados, etc."></textarea>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn-secondary" id="btn-cancel-modal">Cancelar</button>
-                        <button type="submit" class="btn-primary" id="btn-save-record">Guardar</button>
+                        <button type="button" class="btn-secondary" id="btn-cancel-modal">❌ Cancelar</button>
+                        <button type="submit" class="btn-primary" id="btn-save-record">💾 Guardar</button>
                     </div>
                 </form>
             </div>
@@ -135,6 +134,6 @@
         <div id="toast-container"></div>
     </div>
 
-    <script src="/app.js"></script>
+    <script src="/asistencia/app.js?v=23.0"></script>
 </body>
 </html>

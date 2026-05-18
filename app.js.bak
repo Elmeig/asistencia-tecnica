@@ -1,4 +1,6 @@
-const API = '.';
+// Base path for proxied deployment
+const BASE_PATH = '/asistencia';
+const API = window.location.origin + BASE_PATH;
 
 let records = [];
 let filteredRecords = [];
@@ -17,10 +19,10 @@ function hideLoading() { $('.loading-overlay').classList.remove('visible'); }
 function showToast(message, type = 'success') {
     const container = $('#toast-container');
     const toast = document.createElement('div');
-    toast.className = 'toast ' + type;
+    toast.className = `toast ${type}`;
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(function() { toast.remove(); }, 3000);
+    setTimeout(() => toast.remove(), 3000);
 }
 
 // Load records from API
@@ -43,13 +45,13 @@ async function loadRecords() {
 
 // Update stats in header
 function updateStats() {
-    var now = new Date();
-    var month = now.getMonth();
-    var year = now.getFullYear();
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
 
-    var monthCount = records.filter(function(r) {
+    const monthCount = records.filter(r => {
         if (!r.date) return false;
-        var d = new Date(r.date);
+        const d = new Date(r.date);
         return d.getMonth() === month && d.getFullYear() === year;
     }).length;
 
@@ -59,38 +61,74 @@ function updateStats() {
 
 // Populate filter dropdowns
 function populateFilterDropdowns() {
-    var clients = [...new Set(records.map(function(r) { return r.client; }).filter(Boolean))].sort();
-    var machines = [...new Set(records.map(function(r) { return r.machine; }).filter(Boolean))].sort();
-    var techs = [...new Set(records.map(function(r) { return r.tech; }).filter(Boolean))].sort();
-
-    var fillSelect = function(id, items) {
-        var sel = $(id);
-        var current = sel.value;
-        sel.innerHTML = '<option value="">Todos</option>';
-        items.forEach(function(item) {
-            var opt = document.createElement('option');
+    const clients = [...new Set(records.map(r => r.client).filter(Boolean))].sort();
+    const fillSelect = (id, items, placeholder) => {
+        const sel = $(id);
+        const current = sel.value;
+        sel.innerHTML = '<option value="">' + placeholder + '</option>';
+        items.forEach(item => {
+            const opt = document.createElement('option');
             opt.value = item;
             opt.textContent = item;
             sel.appendChild(opt);
         });
-        sel.value = current;
+        // Restore selection if still valid
+        const hasOpt = [...sel.options].some(o => o.value === current);
+        sel.value = hasOpt ? current : '';
     };
 
-    fillSelect('#filter-client', clients);
-    fillSelect('#filter-machine', machines);
-    fillSelect('#filter-tech', techs);
+    // Populate clients (always all)
+    fillSelect('#filter-client', clients, 'Todos los clientes');
+
+    // Cascade: populate machines based on selected client
+    updateMachineDropdown();
+
+    // Populate techs (always all)
+    const techs = [...new Set(records.map(r => r.tech).filter(Boolean))].sort();
+    fillSelect('#filter-tech', techs, 'Todos los técnicos');
+}
+
+function updateMachineDropdown() {
+    const selectedClient = $('#filter-client').value;
+    let machines;
+    if (selectedClient) {
+        machines = [...new Set(
+            records
+                .filter(r => r.client === selectedClient)
+                .map(r => r.machine)
+                .filter(Boolean)
+        )].sort();
+    } else {
+        machines = [...new Set(records.map(r => r.machine).filter(Boolean))].sort();
+    }
+
+    const fillSelect = (id, items, placeholder) => {
+        const sel = $(id);
+        const current = sel.value;
+        sel.innerHTML = '<option value="">' + placeholder + '</option>';
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            opt.textContent = item;
+            sel.appendChild(opt);
+        });
+        const hasOpt = [...sel.options].some(o => o.value === current);
+        sel.value = hasOpt ? current : '';
+    };
+
+    fillSelect('#filter-machine', machines, 'Todas las máquinas');
 }
 
 // Populate datalists for autocomplete
 function populateDatalists() {
-    var clients = [...new Set(records.map(function(r) { return r.client; }).filter(Boolean))].sort();
-    var machines = [...new Set(records.map(function(r) { return r.machine; }).filter(Boolean))].sort();
+    const clients = [...new Set(records.map(r => r.client).filter(Boolean))].sort();
+    const machines = [...new Set(records.map(r => r.machine).filter(Boolean))].sort();
 
-    var fillDatalist = function(id, items) {
-        var dl = $(id);
+    const fillDatalist = (id, items) => {
+        const dl = $(id);
         dl.innerHTML = '';
-        items.forEach(function(item) {
-            var opt = document.createElement('option');
+        items.forEach(item => {
+            const opt = document.createElement('option');
             opt.value = item;
             dl.appendChild(opt);
         });
@@ -102,21 +140,21 @@ function populateDatalists() {
 
 // Apply all filters
 function applyFilters() {
-    var clientFilter = $('#filter-client').value;
-    var machineFilter = $('#filter-machine').value;
-    var techFilter = $('#filter-tech').value;
-    var dateFrom = $('#filter-date-from').value;
-    var dateTo = $('#filter-date-to').value;
-    var searchQuery = ($('#global-search-input').value || '').toLowerCase().trim();
+    const clientFilter = $('#filter-client').value;
+    const machineFilter = $('#filter-machine').value;
+    const techFilter = $('#filter-tech').value;
+    const dateFrom = $('#filter-date-from').value;
+    const dateTo = $('#filter-date-to').value;
+    const searchQuery = ''; // search bar removed
 
-    filteredRecords = records.filter(function(r) {
+    filteredRecords = records.filter(r => {
         if (clientFilter && r.client !== clientFilter) return false;
         if (machineFilter && r.machine !== machineFilter) return false;
         if (techFilter && r.tech !== techFilter) return false;
         if (dateFrom && r.date < dateFrom) return false;
         if (dateTo && r.date > dateTo) return false;
         if (searchQuery) {
-            var searchable = [r.client, r.machine, r.tech, r.comments, r.date]
+            const searchable = [r.client, r.machine, r.tech, r.comments, r.date]
                 .filter(Boolean).join(' ').toLowerCase();
             if (!searchable.includes(searchQuery)) return false;
         }
@@ -124,64 +162,68 @@ function applyFilters() {
     });
 
     // Sort by date descending
-    filteredRecords.sort(function(a, b) {
-        return (b.date || '').localeCompare(a.date || '');
-    });
+    filteredRecords.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     renderRecords();
 }
 
 // Render filtered records to the DOM
 function renderRecords() {
-    var container = $('#records-container');
+    const container = $('#records-container');
     container.innerHTML = '';
 
     if (!filteredRecords.length) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">\ud83d\udccb</div><p>No se encontraron registros</p></div>';
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">\uD83D\uDCCB</div>
+                <p>No se encontraron registros</p>
+            </div>`;
         return;
     }
 
-    filteredRecords.forEach(function(r) {
-        var row = document.createElement('div');
+    filteredRecords.forEach(r => {
+        const row = document.createElement('div');
         row.className = 'record-row';
         row.dataset.id = r.id;
 
-        var expanded = editingId && editingId === r.id;
+        const expanded = editingId && editingId === r.id;
 
-        row.innerHTML =
-            '<div class="record-header" data-id="' + r.id + '">' +
-                '<div class="record-header-left">' +
-                    '<span class="record-date">' + (r.date || '') + '</span>' +
-                    '<span class="record-tech">' + (r.tech || '') + '</span>' +
-                    '<span class="record-machine">' + (r.machine || '') + '</span>' +
-                    '<span>' + (r.client || '') + '</span>' +
-                '</div>' +
-                '<span class="record-toggle" data-id="' + r.id + '">\u25BC</span>' +
-            '</div>' +
-            '<div class="record-body' + (expanded ? ' expanded' : '') + '" data-id="' + r.id + '">' +
-                '<div class="record-comments">' + escapeHtml(r.comments || '') + '</div>' +
-                '<div class="record-actions">' +
-                    '<button class="btn-icon btn-edit" data-id="' + r.id + '" title="Editar">\u270F\uFE0F</button>' +
-                    '<button class="btn-icon btn-delete" data-id="' + r.id + '" title="Eliminar">\ud83d\uddd1\ufe0f</button>' +
-                '</div>' +
-            '</div>';
+        row.innerHTML = `
+            <div class="record-card">
+                <div class="record-card-top" data-id="${r.id}">
+                    <div class="card-info-left">
+                        <div class="card-client">${escapeHtml(r.client || '')}</div>
+                        <div class="card-machine">${r.machine || ''}</div>
+                    </div>
+                    <div class="card-info-right">
+                        <div class="card-tech ${r.tech ? 'tech-' + r.tech.toLowerCase() : ''}">${r.tech || ''}</div>
+                        <div class="card-date">${r.date || ''}</div>
+                    </div>
+                    <span class="record-toggle" data-id="${r.id}" onclick="event.stopPropagation(); toggleRecord('${r.id}')">\u25BC</span>
+                </div>
+                <div class="record-comments">${escapeHtml(r.comments || '')}</div>
+                <div class="record-card-actions" data-id="${r.id}">
+                    <button class="btn-icon btn-edit" data-id="${r.id}" title="Editar">\u270F\uFE0F</button>
+                    <button class="btn-icon btn-delete" data-id="${r.id}" title="Eliminar">\uD83D\uDDD1\uFE0F</button>
+                </div>
+            </div>`;
 
         container.appendChild(row);
     });
 }
 
 function escapeHtml(text) {
-    var div = document.createElement('div');
+    const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
 // Toggle record body expansion
 function toggleRecord(id) {
-    var body = $('.record-body[data-id="' + id + '"]');
-    var toggle = $('.record-toggle[data-id="' + id + '"]');
+    const actions = $(`.record-card-actions[data-id="${id}"]`);
+    const toggle = $(`.record-toggle[data-id="${id}"]`);
     if (body && toggle) {
-        body.classList.toggle('expanded');
+        actions.classList.toggle('show');
         toggle.classList.toggle('expanded');
     }
 }
@@ -189,12 +231,12 @@ function toggleRecord(id) {
 // Open modal for add or edit
 function openModal(id) {
     editingId = id || null;
-    var overlay = $('#modal-record');
+    const overlay = $('#modal-record');
     overlay.classList.add('visible');
 
     if (editingId) {
         $('#modal-title').textContent = 'Editar Asistencia';
-        var rec = records.find(function(r) { return r.id === editingId; });
+        const rec = records.find(r => r.id === editingId);
         if (rec) {
             $('#form-client').value = rec.client || '';
             $('#form-machine').value = rec.machine || '';
@@ -205,7 +247,7 @@ function openModal(id) {
     } else {
         $('#modal-title').textContent = 'Nueva Asistencia';
         $('#record-form').reset();
-        var today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
         $('#form-date').value = today;
     }
 }
@@ -218,7 +260,7 @@ function closeModal() {
 // Save record (create or update)
 async function saveRecord(e) {
     e.preventDefault();
-    var data = {
+    const data = {
         client: $('#form-client').value.trim(),
         machine: $('#form-machine').value.trim(),
         date: $('#form-date').value.trim(),
@@ -228,7 +270,7 @@ async function saveRecord(e) {
 
     showLoading();
     try {
-        var res;
+        let res;
         if (editingId) {
             res = await fetch(API + '/api/records/' + editingId, {
                 method: 'PUT',
@@ -244,7 +286,7 @@ async function saveRecord(e) {
         }
 
         if (!res.ok) {
-            var err = await res.json().catch(function() { return {}; });
+            const err = await res.json().catch(() => ({}));
             throw new Error(err.error || res.statusText);
         }
 
@@ -263,7 +305,7 @@ async function deleteRecord(id) {
 
     showLoading();
     try {
-        var res = await fetch(API + '/api/records/' + id, { method: 'DELETE' });
+        const res = await fetch(API + '/api/records/' + id, { method: 'DELETE' });
         if (!res.ok) throw new Error('Error al eliminar');
         await loadRecords();
         showToast('Registro eliminado', 'success');
@@ -275,26 +317,25 @@ async function deleteRecord(id) {
 
 // Export to Excel (CSV)
 function exportToCSV() {
-    var data = filteredRecords.length ? filteredRecords : records;
+    const data = filteredRecords.length ? filteredRecords : records;
     if (!data.length) {
         showToast('No hay datos para exportar', 'error');
         return;
     }
 
-    var headers = ['Fecha', 'Cliente', 'Maquina', 'Tecnico', 'Comentarios'];
-    var rows = data.map(function(r) {
-        return [r.date || '', r.client || '', r.machine || '', r.tech || '', (r.comments || '').replace(/\n/g, ' ')]
-            .map(function(v) { return '"' + v.replace(/"/g, '""') + '"'; })
-            .join(',');
-    });
+    const headers = ['Fecha', 'Cliente', 'Maquina', 'Tecnico', 'Comentarios'];
+    const rows = data.map(r =>
+        [r.date, r.client, r.machine, r.tech, (r.comments || '').replace(/\n/g, ' ')]
+            .map(v => '"' + (v || '').replace(/"/g, '""') + '"')
+            .join(',')
+    );
 
-    var csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
-    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
+    const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url;
-    var datestr = new Date().toISOString().split('T')[0];
-    a.download = 'asistencia_' + datestr + '.csv';
+    a.download = `asistencia_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('Exportado correctamente', 'success');
@@ -315,68 +356,52 @@ function closeSidebar() {
 
 // Toggle theme
 function toggleTheme() {
-    var html = document.documentElement;
-    var isDark = html.getAttribute('data-theme') === 'dark';
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
     html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    $('#btn-theme').textContent = isDark ? '\u2600\uFE0F' : '\ud83c\udf19';
+    $('#btn-theme').textContent = isDark ? '\u2600\uFE0F' : '\uD83C\uDF19';
 }
 
 // ====== EVENT LISTENERS ======
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     // Load initial data
     loadRecords();
 
     // Header: sidebar toggle
-    var btnToggle = $('#btn-sidebar-toggle');
+    const btnToggle = $('#btn-sidebar-toggle');
     if (btnToggle) btnToggle.addEventListener('click', toggleSidebar);
 
     // Header: add record
-    var btnAdd = $('#btn-add-record');
-    if (btnAdd) btnAdd.addEventListener('click', function() { openModal(); });
+    const btnAdd = $('#btn-add-record');
+    if (btnAdd) btnAdd.addEventListener('click', () => openModal());
 
     // Header: theme toggle
-    var btnTheme = $('#btn-theme');
+    const btnTheme = $('#btn-theme');
     if (btnTheme) btnTheme.addEventListener('click', toggleTheme);
 
-    // Header: search
-    var searchInput = $('#global-search-input');
-    var searchClear = $('#global-search-clear');
-    if (searchInput) {
-        var debounce;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(debounce);
-            debounce = setTimeout(applyFilters, 300);
-            searchClear.style.display = searchInput.value ? 'inline' : 'none';
-        });
-    }
-    if (searchClear) {
-        searchClear.addEventListener('click', function() {
-            searchInput.value = '';
-            searchClear.style.display = 'none';
-            applyFilters();
-        });
-    }
-
     // Sidebar: close
-    var btnClose = $('#btn-sidebar-close');
+    const btnClose = $('#btn-sidebar-close');
     if (btnClose) btnClose.addEventListener('click', closeSidebar);
 
     // Sidebar: backdrop click
-    var backdrop = $('#sidebar-backdrop');
+    const backdrop = $('#sidebar-backdrop');
     if (backdrop) backdrop.addEventListener('click', closeSidebar);
 
     // Sidebar: filters
-    $('#filter-client').addEventListener('change', applyFilters);
+    $('#filter-client').addEventListener('change', () => {
+        updateMachineDropdown();
+        applyFilters();
+    });
     $('#filter-machine').addEventListener('change', applyFilters);
     $('#filter-tech').addEventListener('change', applyFilters);
     $('#filter-date-from').addEventListener('change', applyFilters);
     $('#filter-date-to').addEventListener('change', applyFilters);
 
     // Clear filters
-    var btnClear = $('#btn-clear-filters');
+    const btnClear = $('#btn-clear-filters');
     if (btnClear) {
-        btnClear.addEventListener('click', function() {
+        btnClear.addEventListener('click', () => {
             $('#filter-client').value = '';
             $('#filter-machine').value = '';
             $('#filter-tech').value = '';
@@ -388,18 +413,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Export
-    var btnExport = $('#btn-export');
+    const btnExport = $('#btn-export');
     if (btnExport) btnExport.addEventListener('click', exportToCSV);
 
     // Modal: close
-    var btnCancel = $('#btn-cancel-modal');
+    const btnCancel = $('#btn-cancel-modal');
     if (btnCancel) btnCancel.addEventListener('click', closeModal);
 
-    var btnModalClose = $('#btn-modal-close');
+    const btnModalClose = $('#btn-modal-close');
     if (btnModalClose) btnModalClose.addEventListener('click', closeModal);
 
     // Modal: overlay click
-    $('#modal-record').addEventListener('click', function(e) {
+    $('#modal-record').addEventListener('click', (e) => {
         if (e.target === $('#modal-record')) closeModal();
     });
 
@@ -407,10 +432,10 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#record-form').addEventListener('submit', saveRecord);
 
     // Record list: click headers (expand) and action buttons
-    $('#records-container').addEventListener('click', function(e) {
-        var header = e.target.closest('.record-header');
-        var editBtn = e.target.closest('.btn-edit');
-        var deleteBtn = e.target.closest('.btn-delete');
+    $('#records-container').addEventListener('click', (e) => {
+        const header = e.target.closest('.record-card-top');
+        const editBtn = e.target.closest('.btn-edit');
+        const deleteBtn = e.target.closest('.btn-delete');
 
         if (editBtn) {
             e.stopPropagation();
@@ -424,7 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Keyboard: Escape closes modals/sidebar
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if ($('#modal-record').classList.contains('visible')) closeModal();
             else if (sidebarOpen) closeSidebar();
