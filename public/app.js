@@ -1,3 +1,24 @@
+/* ─── Theme ────────────────────────────────────────── */
+const themes = ['light', 'mid', 'dark'];
+const themeIcons = { light: '🌙', mid: '🌗', dark: '☀️' };
+let currentTheme = localStorage.getItem('theme') || 'light';
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('theme-toggle').textContent = themeIcons[theme];
+  localStorage.setItem('theme', theme);
+}
+
+function cycleTheme() {
+  const idx = themes.indexOf(currentTheme);
+  const next = themes[(idx + 1) % themes.length];
+  applyTheme(next);
+}
+
+// Apply saved theme on load
+applyTheme(currentTheme);
+
 /* ─── Internationalization ─────────────────────────── */
 const i18n = {
   en: {
