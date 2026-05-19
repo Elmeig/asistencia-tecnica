@@ -457,14 +457,7 @@ footer {
     max-width: none !important;
   }
   tbody td::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-light);
-    margin-bottom: 2px;
+    content: none;
   }
   /* Customer left, Machine left */
   tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
