@@ -60,12 +60,14 @@ body {
 
 @media (max-width: 768px) {
   .lang-toggle {
-    top: 12px;
+    top: 50%;
     left: 12px;
     right: auto;
+    transform: translateY(-50%);
     flex-direction: column;
     gap: 2px;
     padding: 3px;
+    position: absolute;
   }
   .lang-btn {
     padding: 4px 10px;
@@ -79,6 +81,7 @@ header {
   color: #fff;
   padding: 2rem 1.5rem 1.2rem;
   text-align: center;
+  position: relative;
 }
 header h1 {
   font-size: 1.8rem;
