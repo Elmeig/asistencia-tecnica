@@ -436,17 +436,21 @@ footer {
 
   /* Card layout for records on mobile */
   table thead { display: none; }
-  table, tbody, tr, td { display: block; width: 100%; }
+  table, tbody { display: block; width: 100%; }
   tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 14px;
     margin-bottom: 12px;
     box-shadow: var(--shadow);
+    gap: 6px;
   }
   tbody tr:hover { background: var(--card); }
   tbody td {
+    display: block;
     padding: 4px 0;
     border: none;
     white-space: normal !important;
@@ -462,8 +466,17 @@ footer {
     color: var(--text-light);
     margin-bottom: 2px;
   }
-  /* Description field - full width, good readability */
+  /* Customer left, Machine left */
+  tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  tbody td:nth-child(2) { grid-column: 1; grid-row: 2; }
+  /* Date right, Technician right */
+  tbody td:nth-child(3) { grid-column: 2; grid-row: 1; text-align: right; }
+  tbody td:nth-child(4) { grid-column: 2; grid-row: 2; text-align: right; }
+  tbody td:nth-child(3)::before,
+  tbody td:nth-child(4)::before { text-align: right; }
+  /* Description full width */
   tbody td:nth-child(5) {
+    grid-column: 1 / -1;
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid var(--border);
