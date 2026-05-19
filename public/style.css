@@ -58,6 +58,21 @@ body {
   background: var(--bg);
 }
 
+@media (max-width: 768px) {
+  .lang-toggle {
+    top: 12px;
+    left: 12px;
+    right: auto;
+    flex-direction: column;
+    gap: 2px;
+    padding: 3px;
+  }
+  .lang-btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+  }
+}
+
 /* ─── Header ──────────────────────────────────────── */
 header {
   background: linear-gradient(135deg, #1e40af, #3b82f6);
@@ -428,7 +443,6 @@ footer {
   .form-grid { grid-template-columns: 1fr; }
   main { padding: 1rem 0.75rem 2rem; }
   .card { padding: 1.2rem; }
-  .lang-toggle { top: 10px; right: 10px; }
   .tab-btn { padding: 12px 8px; font-size: 0.85rem; gap: 5px; }
   .tab-btn span:not(.tab-icon):not(.tab-badge) { display: none; }
   .tab-icon { font-size: 1.3rem; }
