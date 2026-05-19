@@ -197,11 +197,11 @@ function renderPage() {
   } else {
     tbody.innerHTML = pageRecords.map(r => `
       <tr>
-        <td>${escapeHtml(r.cliente)}</td>
-        <td>${escapeHtml(r.torno)}</td>
-        <td>${escapeHtml(r.fecha)}</td>
-        <td>${escapeHtml(r.tecnico)}</td>
-        <td>${escapeHtml(r.comentarios)}</td>
+        <td data-label="${t('customer')}">${escapeHtml(r.cliente)}</td>
+        <td data-label="${t('machine')}">${escapeHtml(r.torno)}</td>
+        <td data-label="${t('date')}">${escapeHtml(r.fecha)}</td>
+        <td data-label="${t('technician')}">${escapeHtml(r.tecnico)}</td>
+        <td data-label="${t('description')}">${escapeHtml(r.comentarios)}</td>
       </tr>
     `).join('');
   }
