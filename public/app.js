@@ -168,6 +168,25 @@ function updateFilterIndicator() {
   }
 }
 
+/* ─── Technician color badge ──────────────────────── */
+function techClass(name) {
+  const n = name.toLowerCase().trim();
+  if (n.includes('mehdi')) return 'tech-mehdi';
+  if (n.includes('ricardo')) return 'tech-ricardo';
+  if (n.includes('felix')) return 'tech-felix';
+  if (n.includes('marcelo')) return 'tech-marcelo';
+  if (n.includes('victor')) return 'tech-victor';
+  if (n.includes('jesus')) return 'tech-jesus';
+  if (n.includes('fran')) return 'tech-fran';
+  if (n.includes('tamara')) return 'tech-tamara';
+  if (n.includes('amin')) return 'tech-amin';
+  return 'tech-other';
+}
+
+function renderTech(name) {
+  return `<span class="tech-badge ${techClass(name)}">${escapeHtml(name)}</span>`;
+}
+
 /* ─── Render table ────────────────────────────────── */
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -200,7 +219,7 @@ function renderPage() {
         <td data-label="${t('customer')}">${escapeHtml(r.cliente)}</td>
         <td data-label="${t('machine')}">${escapeHtml(r.torno)}</td>
         <td data-label="${t('date')}">${escapeHtml(r.fecha)}</td>
-        <td data-label="${t('technician')}">${escapeHtml(r.tecnico)}</td>
+        <td data-label="${t('technician')}">${renderTech(r.tecnico)}</td>
         <td data-label="${t('description')}">${escapeHtml(r.comentarios)}</td>
       </tr>
     `).join('');
