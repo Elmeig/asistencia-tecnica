@@ -102,10 +102,19 @@
           <button class="btn btn-primary" onclick="applyFiltersAndShow()">
             <span data-i18n="searchBtn">Search</span>
           </button>
-          <button class="btn btn-secondary" onclick="clearFilters()">
-            <span data-i18n="clearBtn">Clear</span>
-          </button>
-        </div>
+        <button class="btn btn-secondary" onclick="clearFilters()">
+          <span data-i18n="clearBtn">Clear</span>
+        </button>
+      </div>
+     </div>
+
+      <!-- Export -->
+      <div class="card export-card">
+        <h2>📥 <span data-i18n="exportTitle">Export</span></h2>
+        <p data-i18n="exportDesc">Download the records as an Excel file (.xlsx). If filters are active, only filtered records will be exported.</p>
+        <button class="btn btn-export" onclick="exportXlsx()">
+          <span data-i18n="exportBtn">📥 Download XLSX</span>
+        </button>
       </div>
     </section>
 
@@ -146,15 +155,8 @@
         <div class="pagination" id="pagination-bottom"></div>
       </div>
 
-      <!-- Export -->
-      <div class="card export-card">
-        <h2>📥 <span data-i18n="exportTitle">Export</span></h2>
-        <p data-i18n="exportDesc">Download the records as an Excel file (.xlsx). If filters are active, only filtered records will be exported.</p>
-        <button class="btn btn-export" onclick="exportXlsx()">
-          <span data-i18n="exportBtn">📥 Download XLSX</span>
-        </button>
-      </div>
     </section>
+
   </main>
 
   <footer>
