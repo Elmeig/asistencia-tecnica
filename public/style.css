@@ -24,24 +24,24 @@
 }
 
 [data-theme="mid"] {
-  --primary: #8b5cf6;
-  --primary-hover: #7c3aed;
-  --primary-light: #ede9fe;
-  --success: #16a34a;
-  --success-bg: #dcfce7;
+  --primary: #0d9488;
+  --primary-hover: #0f766e;
+  --primary-light: #ccfbf1;
+  --success: #15803d;
+  --success-bg: #d1fae5;
   --danger: #dc2626;
-  --bg: #ddd6fe;
-  --card: #f5f3ff;
-  --text: #1e1b4b;
-  --text-light: #6b7280;
-  --border: #c4b5fd;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
-  --header-from: #4c1d95;
-  --header-to: #7c3aed;
-  --tab-bg: #f5f3ff;
-  --table-header-bg: #ede9fe;
-  --table-hover: #ede9fe;
+  --bg: #cfdbd5;
+  --card: #e8eeec;
+  --text: #1e3a3a;
+  --text-light: #5a6b6b;
+  --border: #a8bdb6;
+  --shadow: 0 1px 3px rgba(30,58,58,0.1), 0 1px 2px rgba(30,58,58,0.06);
+  --shadow-lg: 0 4px 12px rgba(30,58,58,0.12);
+  --header-from: #1e4a5f;
+  --header-to: #2c6e7f;
+  --tab-bg: #e8eeec;
+  --table-header-bg: #dce4e0;
+  --table-hover: #dce4e0;
 }
 
 [data-theme="dark"] {
@@ -395,24 +395,20 @@ main {
 
 /* ─── Technician Colors ───────────────────────────── */
 .tech-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
   font-weight: 600;
-  font-size: 0.85rem;
   white-space: nowrap;
 }
 
-.tech-mehdi { background: #dbeafe; color: #1e40af; }
-.tech-ricardo { background: #dcfce7; color: #166534; }
-.tech-felix { background: #fef9c3; color: #854d0e; }
-.tech-marcelo { background: #f3e8ff; color: #6b21a8; }
-.tech-victor { background: #ffe4e6; color: #9f1239; }
-.tech-jesus { background: #ffedd5; color: #9a3412; }
-.tech-fran { background: #ccfbf1; color: #115e59; }
-.tech-tamara { background: #fce7f3; color: #9d174d; }
-.tech-amin { background: #e0e7ff; color: #3730a3; }
-.tech-other { background: #f1f5f9; color: #475569; }
+.tech-mehdi { color: #1e40af; }
+.tech-ricardo { color: #166534; }
+.tech-felix { color: #854d0e; }
+.tech-marcelo { color: #6b21a8; }
+.tech-victor { color: #9f1239; }
+.tech-jesus { color: #9a3412; }
+.tech-fran { color: #115e59; }
+.tech-tamara { color: #9d174d; }
+.tech-amin { color: #3730a3; }
+.tech-other { color: #475569; }
 .feedback {
   display: inline-block;
   margin-left: 12px;
@@ -595,4 +591,12 @@ footer {
   header { padding: 1.5rem 1rem 1rem; }
   header h1 { font-size: 1.2rem; }
   .btn { padding: 10px 16px; font-size: 0.9rem; }
+  .theme-toggle {
+    top: auto;
+    bottom: 8px;
+    right: 8px;
+    transform: none;
+    padding: 4px 8px;
+    font-size: 0.95rem;
+  }
 }
