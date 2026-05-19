@@ -18,112 +18,142 @@
     <p class="subtitle" data-i18n="subtitle">Remote technical assistance log</p>
   </header>
 
+  <!-- ─── Tab Navigation ───────────────────────── -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="add" onclick="switchTab('add')">
+      <span class="tab-icon">➕</span>
+      <span data-i18n="addTitle">New Record</span>
+    </button>
+    <button class="tab-btn" data-tab="filter" onclick="switchTab('filter')">
+      <span class="tab-icon">🔍</span>
+      <span data-i18n="filterTitle">Search & Filter</span>
+    </button>
+    <button class="tab-btn" data-tab="records" onclick="switchTab('records')">
+      <span class="tab-icon">📋</span>
+      <span data-i18n="resultsTitle">Records</span>
+      <span class="tab-badge" id="tab-badge"></span>
+    </button>
+  </nav>
+
   <main>
-    <!-- ─── Add New Record ─────────────────────── -->
-    <section class="card" id="add-section">
-      <h2>➕ <span data-i18n="addTitle">New Record</span></h2>
-      <form id="add-form">
+    <!-- ─── Tab 1: Add New Record ──────────────── -->
+    <section class="tab-panel active" id="panel-add">
+      <div class="card">
+        <h2>➕ <span data-i18n="addTitle">New Record</span></h2>
+        <form id="add-form">
+          <div class="form-grid">
+            <div class="field">
+              <label for="new-cliente" data-i18n="customer">Customer</label>
+              <input type="text" id="new-cliente" required autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="new-torno" data-i18n="machine">Machine</label>
+              <input type="text" id="new-torno" required autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="new-tecnico" data-i18n="technician">Technician</label>
+              <input type="text" id="new-tecnico" required autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="new-fecha" data-i18n="date">Date</label>
+              <input type="date" id="new-fecha">
+            </div>
+            <div class="field full-width">
+              <label for="new-comentarios" data-i18n="description">Description</label>
+              <textarea id="new-comentarios" rows="5" required></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" id="btn-add">
+            <span data-i18n="addBtn">Add Record</span>
+          </button>
+          <span id="add-feedback" class="feedback"></span>
+        </form>
+      </div>
+    </section>
+
+    <!-- ─── Tab 2: Search & Filter ─────────────── -->
+    <section class="tab-panel" id="panel-filter">
+      <div class="card">
+        <h2>🔍 <span data-i18n="filterTitle">Search & Filter</span></h2>
         <div class="form-grid">
           <div class="field">
-            <label for="new-cliente" data-i18n="customer">Customer</label>
-            <input type="text" id="new-cliente" required autocomplete="off">
+            <label for="f-cliente" data-i18n="customer">Customer</label>
+            <input type="text" id="f-cliente" autocomplete="off">
           </div>
           <div class="field">
-            <label for="new-torno" data-i18n="machine">Machine</label>
-            <input type="text" id="new-torno" required autocomplete="off">
+            <label for="f-torno" data-i18n="machine">Machine</label>
+            <input type="text" id="f-torno" autocomplete="off">
           </div>
           <div class="field">
-            <label for="new-tecnico" data-i18n="technician">Technician</label>
-            <input type="text" id="new-tecnico" required autocomplete="off">
+            <label for="f-tecnico" data-i18n="technician">Technician</label>
+            <input type="text" id="f-tecnico" autocomplete="off">
+          </div>
+          <div class="field spacer-field"></div>
+          <div class="field">
+            <label for="f-desde" data-i18n="dateFrom">Date From</label>
+            <input type="date" id="f-desde">
           </div>
           <div class="field">
-            <label for="new-fecha" data-i18n="date">Date</label>
-            <input type="date" id="new-fecha">
-          </div>
-          <div class="field full-width">
-            <label for="new-comentarios" data-i18n="description">Description</label>
-            <textarea id="new-comentarios" rows="4" required></textarea>
+            <label for="f-hasta" data-i18n="dateTo">Date To</label>
+            <input type="date" id="f-hasta">
           </div>
         </div>
-        <button type="submit" class="btn btn-primary" id="btn-add">
-          <span data-i18n="addBtn">Add Record</span>
-        </button>
-        <span id="add-feedback" class="feedback"></span>
-      </form>
-    </section>
-
-    <!-- ─── Filters ────────────────────────────── -->
-    <section class="card" id="filter-section">
-      <h2>🔍 <span data-i18n="filterTitle">Search & Filter</span></h2>
-      <div class="form-grid">
-        <div class="field">
-          <label for="f-cliente" data-i18n="customer">Customer</label>
-          <input type="text" id="f-cliente" autocomplete="off">
+        <div class="filter-actions">
+          <button class="btn btn-primary" onclick="applyFiltersAndShow()">
+            <span data-i18n="searchBtn">Search</span>
+          </button>
+          <button class="btn btn-secondary" onclick="clearFilters()">
+            <span data-i18n="clearBtn">Clear</span>
+          </button>
         </div>
-        <div class="field">
-          <label for="f-torno" data-i18n="machine">Machine</label>
-          <input type="text" id="f-torno" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-tecnico" data-i18n="technician">Technician</label>
-          <input type="text" id="f-tecnico" autocomplete="off">
-        </div>
-        <div class="field spacer"></div>
-        <div class="field">
-          <label for="f-desde" data-i18n="dateFrom">Date From</label>
-          <input type="date" id="f-desde">
-        </div>
-        <div class="field">
-          <label for="f-hasta" data-i18n="dateTo">Date To</label>
-          <input type="date" id="f-hasta">
-        </div>
-      </div>
-      <div class="filter-actions">
-        <button class="btn btn-primary" onclick="applyFilters()">
-          <span data-i18n="searchBtn">Search</span>
-        </button>
-        <button class="btn btn-secondary" onclick="clearFilters()">
-          <span data-i18n="clearBtn">Clear</span>
-        </button>
       </div>
     </section>
 
-    <!-- ─── Results Table ──────────────────────── -->
-    <section class="card" id="results-section">
-      <div class="results-header">
-        <h2>📋 <span data-i18n="resultsTitle">Records</span></h2>
-        <span class="record-count" id="record-count"></span>
+    <!-- ─── Tab 3: Records ─────────────────────── -->
+    <section class="tab-panel" id="panel-records">
+      <div class="card">
+        <div class="results-header">
+          <h2>📋 <span data-i18n="resultsTitle">Records</span></h2>
+          <span class="record-count" id="record-count"></span>
+        </div>
+
+        <!-- Active filters indicator -->
+        <div class="active-filters" id="active-filters" style="display:none;">
+          <span data-i18n="activeFilters">Active filters</span>:
+          <span id="filter-tags"></span>
+          <button class="btn-clear-filters" onclick="clearFilters(); applyFilters();">✕</button>
+        </div>
+
+        <!-- Pagination Top -->
+        <div class="pagination" id="pagination-top"></div>
+
+        <div class="table-wrap">
+          <table id="results-table">
+            <thead>
+              <tr>
+                <th data-i18n="customer">Customer</th>
+                <th data-i18n="machine">Machine</th>
+                <th data-i18n="date">Date</th>
+                <th data-i18n="technician">Technician</th>
+                <th data-i18n="description">Description</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Bottom -->
+        <div class="pagination" id="pagination-bottom"></div>
       </div>
 
-      <!-- Pagination Top -->
-      <div class="pagination" id="pagination-top"></div>
-
-      <div class="table-wrap">
-        <table id="results-table">
-          <thead>
-            <tr>
-              <th data-i18n="customer">Customer</th>
-              <th data-i18n="machine">Machine</th>
-              <th data-i18n="date">Date</th>
-              <th data-i18n="technician">Technician</th>
-              <th data-i18n="description">Description</th>
-            </tr>
-          </thead>
-          <tbody id="results-body"></tbody>
-        </table>
+      <!-- Export -->
+      <div class="card export-card">
+        <h2>📥 <span data-i18n="exportTitle">Export</span></h2>
+        <p data-i18n="exportDesc">Download the records as an Excel file (.xlsx). If filters are active, only filtered records will be exported.</p>
+        <button class="btn btn-export" onclick="exportXlsx()">
+          <span data-i18n="exportBtn">📥 Download XLSX</span>
+        </button>
       </div>
-
-      <!-- Pagination Bottom -->
-      <div class="pagination" id="pagination-bottom"></div>
-    </section>
-
-    <!-- ─── Export ──────────────────────────────── -->
-    <section class="card" id="export-section">
-      <h2>📥 <span data-i18n="exportTitle">Export</span></h2>
-      <p data-i18n="exportDesc">Download the records as an Excel file (.xlsx). If filters are active, only filtered records will be exported.</p>
-      <button class="btn btn-export" onclick="exportXlsx()">
-        <span data-i18n="exportBtn">Download XLSX</span>
-      </button>
     </section>
   </main>
 

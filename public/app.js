@@ -26,6 +26,7 @@ const i18n = {
     prev: '← Prev',
     next: 'Next →',
     required: 'Please fill all required fields.',
+    activeFilters: 'Active filters',
   },
   es: {
     title: 'Registro de Asistencia Técnica',
@@ -53,6 +54,7 @@ const i18n = {
     prev: '← Anterior',
     next: 'Siguiente →',
     required: 'Por favor completa todos los campos obligatorios.',
+    activeFilters: 'Filtros activos',
   },
 };
 
@@ -69,21 +71,31 @@ function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('lang', lang);
 
-  // Update toggle buttons
   document.getElementById('btn-en').classList.toggle('active', lang === 'en');
   document.getElementById('btn-es').classList.toggle('active', lang === 'es');
 
-  // Update all data-i18n elements
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (i18n[lang][key]) el.textContent = i18n[lang][key];
   });
 
-  // Update record count
   updateRecordCount();
-
-  // Re-render pagination (labels change)
   renderPage();
+  updateFilterIndicator();
+}
+
+/* ─── Tab switching ───────────────────────────────── */
+function switchTab(tab) {
+  // Update buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  // Update panels
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === 'panel-' + tab);
+  });
+  // Save active tab
+  localStorage.setItem('activeTab', tab);
 }
 
 /* ─── API helpers ─────────────────────────────────── */
@@ -129,6 +141,33 @@ function hasActiveFilters() {
   return f.cliente || f.torno || f.tecnico || f.desde || f.hasta;
 }
 
+/* ─── Filter indicator ────────────────────────────── */
+function updateFilterIndicator() {
+  const container = document.getElementById('active-filters');
+  const tagsEl = document.getElementById('filter-tags');
+  const f = getFilters();
+  const tags = [];
+
+  const labelMap = {
+    cliente: () => t('customer'),
+    torno: () => t('machine'),
+    tecnico: () => t('technician'),
+    desde: () => t('dateFrom'),
+    hasta: () => t('dateTo'),
+  };
+
+  for (const [key, val] of Object.entries(f)) {
+    if (val) tags.push(`<span class="filter-tag">${labelMap[key]()}: ${val}</span>`);
+  }
+
+  if (tags.length > 0) {
+    tagsEl.innerHTML = tags.join(' ');
+    container.style.display = 'flex';
+  } else {
+    container.style.display = 'none';
+  }
+}
+
 /* ─── Render table ────────────────────────────────── */
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -139,6 +178,10 @@ function escapeHtml(str) {
 function updateRecordCount() {
   const el = document.getElementById('record-count');
   el.textContent = t('recordCount').replace('{count}', currentRecords.length);
+
+  // Update badge on records tab
+  const badge = document.getElementById('tab-badge');
+  badge.textContent = currentRecords.length;
 }
 
 function renderPage() {
@@ -178,7 +221,6 @@ function renderPagination(totalPages) {
     let html = '';
     html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>${t('prev')}</button>`;
 
-    // Smart page numbers: show first, last, and nearby pages
     const pages = new Set();
     pages.add(1);
     pages.add(totalPages);
@@ -201,8 +243,7 @@ function renderPagination(totalPages) {
 function goToPage(page) {
   currentPage = page;
   renderPage();
-  // Scroll to results
-  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('panel-records').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* ─── Filter actions ──────────────────────────────── */
@@ -212,6 +253,13 @@ async function applyFilters() {
   currentRecords = result.records;
   currentPage = 1;
   renderPage();
+  updateFilterIndicator();
+}
+
+// Apply filters and auto-switch to records tab
+async function applyFiltersAndShow() {
+  await applyFilters();
+  switchTab('records');
 }
 
 function clearFilters() {
@@ -264,12 +312,11 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
   const result = await addRecord(data);
   if (result.ok) {
     showFeedback(t('addSuccess'), 'success');
-    // Clear form
     document.getElementById('new-cliente').value = '';
     document.getElementById('new-torno').value = '';
     document.getElementById('new-tecnico').value = '';
     document.getElementById('new-comentarios').value = '';
-    document.getElementById('new-fecha').value = '';
+    document.getElementById('new-fecha').value = new Date().toISOString().slice(0, 10);
     // Refresh records
     await applyFilters();
   } else {
@@ -282,8 +329,12 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
   // Set today's date as default
   document.getElementById('new-fecha').value = new Date().toISOString().slice(0, 10);
 
-  // Set language
+  // Restore language
   setLang(currentLang);
+
+  // Restore active tab
+  const savedTab = localStorage.getItem('activeTab') || 'add';
+  switchTab(savedTab);
 
   // Load all records
   const result = await fetchRecords();
