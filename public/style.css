@@ -60,14 +60,16 @@ body {
 
 @media (max-width: 768px) {
   .lang-toggle {
-    position: static;
-    transform: none;
-    flex-direction: row;
-    justify-content: center;
-    gap: 4px;
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    right: auto;
+    transform: translateY(-50%);
+    flex-direction: column;
+    gap: 2px;
     padding: 3px;
+    margin-top: 0;
     background: rgba(255,255,255,0.15);
-    margin-top: 10px;
   }
   .lang-btn {
     padding: 4px 10px;
