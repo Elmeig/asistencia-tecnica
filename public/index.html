@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asistencia Técnica</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Language Toggle -->
+  <div class="lang-toggle">
+    <button id="btn-en" class="lang-btn active" onclick="setLang('en')">EN</button>
+    <button id="btn-es" class="lang-btn" onclick="setLang('es')">ES</button>
+  </div>
+
+  <header>
+    <h1>🔧 <span data-i18n="title">Technical Assistance Registry</span></h1>
+    <p class="subtitle" data-i18n="subtitle">Remote technical assistance log</p>
+  </header>
+
+  <main>
+    <!-- ─── Add New Record ─────────────────────── -->
+    <section class="card" id="add-section">
+      <h2>➕ <span data-i18n="addTitle">New Record</span></h2>
+      <form id="add-form">
+        <div class="form-grid">
+          <div class="field">
+            <label for="new-cliente" data-i18n="customer">Customer</label>
+            <input type="text" id="new-cliente" required autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="new-torno" data-i18n="machine">Machine</label>
+            <input type="text" id="new-torno" required autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="new-tecnico" data-i18n="technician">Technician</label>
+            <input type="text" id="new-tecnico" required autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="new-fecha" data-i18n="date">Date</label>
+            <input type="date" id="new-fecha">
+          </div>
+          <div class="field full-width">
+            <label for="new-comentarios" data-i18n="description">Description</label>
+            <textarea id="new-comentarios" rows="4" required></textarea>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-add">
+          <span data-i18n="addBtn">Add Record</span>
+        </button>
+        <span id="add-feedback" class="feedback"></span>
+      </form>
+    </section>
+
+    <!-- ─── Filters ────────────────────────────── -->
+    <section class="card" id="filter-section">
+      <h2>🔍 <span data-i18n="filterTitle">Search & Filter</span></h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-cliente" data-i18n="customer">Customer</label>
+          <input type="text" id="f-cliente" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-torno" data-i18n="machine">Machine</label>
+          <input type="text" id="f-torno" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-tecnico" data-i18n="technician">Technician</label>
+          <input type="text" id="f-tecnico" autocomplete="off">
+        </div>
+        <div class="field spacer"></div>
+        <div class="field">
+          <label for="f-desde" data-i18n="dateFrom">Date From</label>
+          <input type="date" id="f-desde">
+        </div>
+        <div class="field">
+          <label for="f-hasta" data-i18n="dateTo">Date To</label>
+          <input type="date" id="f-hasta">
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-primary" onclick="applyFilters()">
+          <span data-i18n="searchBtn">Search</span>
+        </button>
+        <button class="btn btn-secondary" onclick="clearFilters()">
+          <span data-i18n="clearBtn">Clear</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ─── Results Table ──────────────────────── -->
+    <section class="card" id="results-section">
+      <div class="results-header">
+        <h2>📋 <span data-i18n="resultsTitle">Records</span></h2>
+        <span class="record-count" id="record-count"></span>
+      </div>
+
+      <!-- Pagination Top -->
+      <div class="pagination" id="pagination-top"></div>
+
+      <div class="table-wrap">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th data-i18n="customer">Customer</th>
+              <th data-i18n="machine">Machine</th>
+              <th data-i18n="date">Date</th>
+              <th data-i18n="technician">Technician</th>
+              <th data-i18n="description">Description</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Bottom -->
+      <div class="pagination" id="pagination-bottom"></div>
+    </section>
+
+    <!-- ─── Export ──────────────────────────────── -->
+    <section class="card" id="export-section">
+      <h2>📥 <span data-i18n="exportTitle">Export</span></h2>
+      <p data-i18n="exportDesc">Download the records as an Excel file (.xlsx). If filters are active, only filtered records will be exported.</p>
+      <button class="btn btn-export" onclick="exportXlsx()">
+        <span data-i18n="exportBtn">Download XLSX</span>
+      </button>
+    </section>
+  </main>
+
+  <footer>
+    <p>Asistencia Técnica © 2025</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

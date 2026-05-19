@@ -1,236 +1,224 @@
-const http = require("http");
-const fs = require("fs");
-const path = require("path");
-const crypto = require("crypto");
-const XLSX = require("xlsx");
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const XLSX = require('xlsx');
+const { v4: uuidv4 } = require('uuid');
 
 const PORT = 3001;
-const DATA_FILE = path.join(__dirname, "data", "records.json");
+const DATA_DIR = path.join(__dirname, 'data');
+const XLSX_FILE = path.join(DATA_DIR, 'asistencia.xlsx');
+const JSON_FILE = path.join(DATA_DIR, 'records.json');
 
-// ===== DATA HELPERS =====
-function readData() {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+// ─── MIME types ──────────────────────────────────────
+const MIME = {
+  '.html': 'text/html',
+  '.css': 'text/css',
+  '.js': 'application/javascript',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+};
+
+// ─── Load records from xlsx into memory + JSON cache ─
+function loadFromXlsx() {
+  const wb = XLSX.readFile(XLSX_FILE);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  const records = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || !r.some(c => c !== undefined && c !== '')) continue;
+    // Date: Excel serial number → ISO string
+    let fecha = r[2];
+    if (typeof fecha === 'number') {
+      const d = new Date((fecha - 25569) * 86400000);
+      fecha = d.toISOString().slice(0, 10);
+    } else if (fecha) {
+      fecha = String(fecha);
+    } else {
+      fecha = '';
+    }
+    records.push({
+      id: uuidv4(),
+      cliente: String(r[0] || '').trim(),
+      torno: String(r[1] || '').trim(),
+      fecha,
+      tecnico: String(r[3] || '').trim(),
+      comentarios: String(r[4] || '').trim(),
+    });
+  }
+  return records;
 }
-function writeData(data) {
-    const tmp = DATA_FILE + ".tmp";
-    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf8");
-    fs.renameSync(tmp, DATA_FILE);
+
+function loadRecords() {
+  if (fs.existsSync(JSON_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(JSON_FILE, 'utf8'));
+    } catch (_) {}
+  }
+  const records = loadFromXlsx();
+  saveRecords(records);
+  return records;
 }
 
-// ===== ROUTER =====
-const server = http.createServer((req, res) => {
-    const url = new URL(req.url, `http://localhost:${PORT}`);
-    const pathname = url.pathname;
-    const method = req.method;
+function saveRecords(records) {
+  fs.writeFileSync(JSON_FILE, JSON.stringify(records, null, 2));
+}
 
-    // GET / — serve HTML
-    if (pathname === "/" && method === "GET") {
-        serveFile(res, "index.html", "text/html");
-        return;
+let records = loadRecords();
+
+// ─── Helpers ─────────────────────────────────────────
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => (body += chunk));
+    req.on('end', () => {
+      try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+    });
+  });
+}
+
+function json(res, data, status = 200) {
+  res.writeHead(status, {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.end(JSON.stringify(data));
+}
+
+function cors(res) {
+  res.writeHead(204, {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  });
+  res.end();
+}
+
+// ─── Build xlsx buffer from records ──────────────────
+function buildXlsx(recs) {
+  const header = ['Cliente', 'Torno', 'Fecha', 'Técnico', 'Comentarios'];
+  const rows = [header];
+  for (const r of recs) {
+    rows.push([r.cliente, r.torno, r.fecha, r.tecnico, r.comentarios]);
+  }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 20 }, // Cliente
+    { wch: 20 }, // Torno
+    { wch: 12 }, // Fecha
+    { wch: 15 }, // Técnico
+    { wch: 80 }, // Comentarios
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, 'Hoja1');
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+// ─── Filter logic ────────────────────────────────────
+function filterRecords(query) {
+  let result = records;
+  if (query.cliente) {
+    const q = query.cliente.toLowerCase();
+    result = result.filter(r => r.cliente.toLowerCase().includes(q));
+  }
+  if (query.torno) {
+    const q = query.torno.toLowerCase();
+    result = result.filter(r => r.torno.toLowerCase().includes(q));
+  }
+  if (query.tecnico) {
+    const q = query.tecnico.toLowerCase();
+    result = result.filter(r => r.tecnico.toLowerCase().includes(q));
+  }
+  if (query.desde) {
+    result = result.filter(r => r.fecha >= query.desde);
+  }
+  if (query.hasta) {
+    result = result.filter(r => r.fecha <= query.hasta);
+  }
+  // Sort newest first
+  result.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  return result;
+}
+
+// ─── Parse query string ──────────────────────────────
+function parseQS(urlStr) {
+  const idx = urlStr.indexOf('?');
+  if (idx === -1) return {};
+  const params = {};
+  urlStr.slice(idx + 1).split('&').forEach(p => {
+    const [k, v] = p.split('=');
+    if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+  });
+  return params;
+}
+
+// ─── Server ──────────────────────────────────────────
+const server = http.createServer(async (req, res) => {
+  const method = req.method;
+  const urlPath = req.url.split('?')[0];
+  const query = parseQS(req.url);
+
+  // CORS preflight
+  if (method === 'OPTIONS') return cors(res);
+
+  // ── API routes ──
+  if (urlPath === '/api/records' && method === 'GET') {
+    const filtered = filterRecords(query);
+    return json(res, { total: filtered.length, records: filtered });
+  }
+
+  if (urlPath === '/api/records' && method === 'POST') {
+    try {
+      const body = await parseBody(req);
+      const record = {
+        id: uuidv4(),
+        cliente: String(body.cliente || '').trim(),
+        torno: String(body.torno || '').trim(),
+        fecha: body.fecha || new Date().toISOString().slice(0, 10),
+        tecnico: String(body.tecnico || '').trim(),
+        comentarios: String(body.comentarios || '').trim(),
+      };
+      if (!record.cliente || !record.torno || !record.tecnico) {
+        return json(res, { error: 'Missing required fields' }, 400);
+      }
+      records.push(record);
+      saveRecords(records);
+      return json(res, record, 201);
+    } catch (e) {
+      return json(res, { error: 'Invalid JSON' }, 400);
     }
+  }
 
-    // GET /app.js
-    if (pathname === "/app.js" && method === "GET") {
-        serveFile(res, "app.js", "application/javascript");
-        return;
-    }
+  if (urlPath === '/api/export' && method === 'GET') {
+    const filtered = filterRecords(query);
+    const buf = buildXlsx(filtered);
+    res.writeHead(200, {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="Asistencia_Tecnica.xlsx"',
+      'Content-Length': buf.length,
+      'Access-Control-Allow-Origin': '*',
+    });
+    return res.end(buf);
+  }
 
-    // GET /styles.css
-    if (pathname === "/styles.css" && method === "GET") {
-        serveFile(res, "styles.css", "text/css");
-        return;
-    }
-
-    // GET /api/records — get all records (optionally filtered)
-    if (pathname === "/api/records" && method === "GET") {
-        const data = readData();
-        let records = [...data.records];
-
-        const client = url.searchParams.get("client");
-        const machine = url.searchParams.get("machine");
-        const tech = url.searchParams.get("tech");
-        const dateFrom = url.searchParams.get("dateFrom");
-        const dateTo = url.searchParams.get("dateTo");
-        const q = url.searchParams.get("q");
-
-        if (client) records = records.filter(r => r.client === client);
-        if (machine) records = records.filter(r => r.machine === machine);
-        if (tech) records = records.filter(r => r.tech === tech);
-        if (dateFrom) records = records.filter(r => r.date >= dateFrom);
-        if (dateTo) records = records.filter(r => r.date <= dateTo);
-        if (q) {
-            const ql = q.toLowerCase();
-            records = records.filter(r =>
-                (r.comments && r.comments.toLowerCase().includes(ql)) ||
-                (r.client && r.client.toLowerCase().includes(ql)) ||
-                (r.tech && r.tech.toLowerCase().includes(ql))
-            );
-        }
-
-        // Sort newest first
-        records.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-        jsonResponse(res, records);
-        return;
-    }
-
-    // GET /api/clients — get clients structure
-    if (pathname === "/api/clients" && method === "GET") {
-        const data = readData();
-        jsonResponse(res, { clients: data.clients, techs: data.techs });
-        return;
-    }
-
-    // POST /api/records — add new record
-    if (pathname === "/api/records" && method === "POST") {
-        parseBody(req).then(body => {
-            if (!body.client || !body.date) {
-                jsonError(res, 400, "Cliente y fecha son obligatorios");
-                return;
-            }
-            const data = readData();
-            const record = {
-                id: crypto.randomUUID(),
-                client: body.client.trim(),
-                machine: (body.machine || "").trim(),
-                date: body.date.trim(),
-                tech: (body.tech || "").trim(),
-                comments: (body.comments || "").trim(),
-                createdAt: new Date().toISOString().slice(0, 10)
-            };
-            data.records.push(record);
-
-            // Update client-machine mapping
-            if (!data.clients[record.client]) data.clients[record.client] = [];
-            if (record.machine && !data.clients[record.client].includes(record.machine)) {
-                data.clients[record.client].push(record.machine);
-                data.clients[record.client].sort();
-            }
-            writeData(data);
-            jsonOk(res, { id: record.id });
-        });
-        return;
-    }
-
-    // PUT /api/records/:id — update record
-    if (pathname.startsWith("/api/records/") && method === "PUT") {
-        const parts = pathname.split("/");
-        const id = parts[3];
-        parseBody(req).then(body => {
-            const data = readData();
-            const i = data.records.findIndex(r => r.id === id);
-            if (i === -1) { jsonError(res, 404, "Registro no encontrado"); return; }
-            data.records[i] = { ...data.records[i], ...body, comments: body.comments !== undefined ? (body.comments || "").trim() : data.records[i].comments };
-            // Update machine mapping
-            if (body.machine && body.client && data.clients[body.client]) {
-                if (!data.clients[body.client].includes(body.machine)) {
-                    data.clients[body.client].push(body.machine);
-                    data.clients[body.client].sort();
-                }
-            }
-            writeData(data);
-            jsonOk(res);
-        });
-        return;
-    }
-
-    // DELETE /api/records/:id
-    if (pathname.startsWith("/api/records/") && method === "DELETE") {
-        const parts = pathname.split("/");
-        const id = parts[3];
-        const data = readData();
-        data.records = data.records.filter(r => r.id !== id);
-        writeData(data);
-        jsonOk(res);
-        return;
-    }
-
-    // GET /api/export — export to Excel (filtered)
-    if (pathname === "/api/export" && method === "GET") {
-        const data = readData();
-        let records = [...data.records];
-
-        const client = url.searchParams.get("client");
-        const machine = url.searchParams.get("machine");
-        const tech = url.searchParams.get("tech");
-        const dateFrom = url.searchParams.get("dateFrom");
-        const dateTo = url.searchParams.get("dateTo");
-
-        if (client) records = records.filter(r => r.client === client);
-        if (machine) records = records.filter(r => r.machine === machine);
-        if (tech) records = records.filter(r => r.tech === tech);
-        if (dateFrom) records = records.filter(r => r.date >= dateFrom);
-        if (dateTo) records = records.filter(r => r.date <= dateTo);
-
-        // Sort by date
-        records.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-
-        // Build Excel
-        const ws = XLSX.utils.json_to_sheet(records.map((r, i) => ({
-            "Nº": i + 1,
-            "Cliente": r.client,
-            "Máquina": r.machine,
-            "Fecha": r.date,
-            "Técnico": r.tech,
-            "Comentarios": r.comments
-        })));
-
-        ws["!cols"] = [
-            { wch: 6 }, { wch: 22 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 60 }
-        ];
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Asistencias");
-
-        const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-
-        res.writeHead(200, {
-            "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "Content-Disposition": `attachment; filename="asistencias_${new Date().toISOString().slice(0, 10)}.xlsx"`,
-            "Content-Length": buffer.length
-        });
-        res.end(buffer);
-        return;
-    }
-
-    // 404
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Not found" }));
+  // ── Static files ──
+  let filePath = path.join(__dirname, 'public', urlPath === '/' ? 'index.html' : urlPath);
+  if (!fs.existsSync(filePath)) {
+    res.writeHead(404);
+    return res.end('Not found');
+  }
+  const ext = path.extname(filePath);
+  const mime = MIME[ext] || 'application/octet-stream';
+  const content = fs.readFileSync(filePath);
+  res.writeHead(200, { 'Content-Type': mime });
+  res.end(content);
 });
 
-// ===== HELPERS =====
-function serveFile(res, filename, contentType) {
-    const filePath = path.join(__dirname, filename);
-    if (!fs.existsSync(filePath)) {
-        res.writeHead(404); res.end("File not found"); return;
-    }
-    const content = fs.readFileSync(filePath, "utf8");
-    res.writeHead(200, { "Content-Type": contentType + "; charset=utf-8" });
-    res.end(content);
-}
-
-function parseBody(req) {
-    return new Promise((resolve, reject) => {
-        let body = "";
-        req.on("data", chunk => body += chunk);
-        req.on("end", () => { try { resolve(JSON.parse(body)); } catch(e) { reject(e); } });
-    });
-}
-
-function jsonOk(res, data) {
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ ok: true, ...data }));
-}
-function jsonError(res, code, msg) {
-    res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ ok: false, error: msg }));
-}
-function jsonResponse(res, data) {
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify(data));
-}
-
-// ===== SERVER START =====
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Asistencia Técnica Server Running on port ${PORT}`);
-    console.log(`  Local: http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Asistencia server running on http://localhost:${PORT}`);
 });
