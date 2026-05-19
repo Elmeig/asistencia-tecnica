@@ -7,15 +7,14 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Language Toggle -->
-  <div class="lang-toggle">
-    <button id="btn-en" class="lang-btn active" onclick="setLang('en')">EN</button>
-    <button id="btn-es" class="lang-btn" onclick="setLang('es')">ES</button>
-  </div>
-
   <header>
     <h1><span data-i18n="title">Technical Assistance Registry</span></h1>
     <p class="subtitle" data-i18n="subtitle">Remote technical assistance log</p>
+    <!-- Language Toggle (inside header on mobile) -->
+    <div class="lang-toggle">
+      <button id="btn-en" class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button id="btn-es" class="lang-btn" onclick="setLang('es')">ES</button>
+    </div>
   </header>
 
   <!-- ─── Tab Navigation ───────────────────────── -->

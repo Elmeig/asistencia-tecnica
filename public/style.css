@@ -28,16 +28,16 @@ body {
 
 /* ─── Language Toggle ─────────────────────────────── */
 .lang-toggle {
-  position: fixed;
-  top: 16px;
+  position: absolute;
+  top: 50%;
   right: 16px;
+  transform: translateY(-50%);
   display: flex;
   gap: 4px;
   z-index: 100;
-  background: var(--card);
+  background: rgba(255,255,255,0.15);
   border-radius: 8px;
   padding: 4px;
-  box-shadow: var(--shadow);
 }
 .lang-btn {
   padding: 6px 14px;
@@ -47,31 +47,36 @@ body {
   font-weight: 600;
   font-size: 0.85rem;
   border-radius: 6px;
-  color: var(--text-light);
+  color: rgba(255,255,255,0.7);
   transition: all 0.2s;
 }
 .lang-btn.active {
-  background: var(--primary);
+  background: rgba(255,255,255,0.25);
   color: #fff;
 }
 .lang-btn:hover:not(.active) {
-  background: var(--bg);
+  background: rgba(255,255,255,0.1);
 }
 
 @media (max-width: 768px) {
   .lang-toggle {
-    top: 50%;
-    left: 12px;
-    right: auto;
-    transform: translateY(-50%);
-    flex-direction: column;
-    gap: 2px;
+    position: static;
+    transform: none;
+    flex-direction: row;
+    justify-content: center;
+    gap: 4px;
     padding: 3px;
-    position: absolute;
+    background: rgba(255,255,255,0.15);
+    margin-top: 10px;
   }
   .lang-btn {
     padding: 4px 10px;
     font-size: 0.75rem;
+    color: rgba(255,255,255,0.7);
+  }
+  .lang-btn.active {
+    background: rgba(255,255,255,0.25);
+    color: #fff;
   }
 }
 
