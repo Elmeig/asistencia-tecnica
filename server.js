@@ -153,7 +153,11 @@ function parseQS(urlStr) {
   const params = {};
   urlStr.slice(idx + 1).split('&').forEach(p => {
     const [k, v] = p.split('=');
-    if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+    if (k) {
+      // '+' represents a space in URL-encoded strings (application/x-www-form-urlencoded)
+      const decodedV = decodeURIComponent((v || '').replace(/\+/g, ' '));
+      params[decodeURIComponent(k.replace(/\+/g, ' '))] = decodedV;
+    }
   });
   return params;
 }
