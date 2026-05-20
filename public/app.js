@@ -82,6 +82,7 @@ const i18n = {
 let currentLang = localStorage.getItem('lang') || 'en';
 let currentRecords = [];
 let currentPage = 1;
+let _editId = null; // ID of record being edited, null if adding new
 const PAGE_SIZE = 20;
 
 function t(key) {
@@ -152,6 +153,20 @@ async function addRecord(data) {
   return { ok: res.ok, data: await res.json() };
 }
 
+async function updateRecord(id, data) {
+  const res = await fetch(`${API}/records/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return { ok: res.ok, data: await res.json() };
+}
+
+async function deleteRecordApi(id) {
+  const res = await fetch(`${API}/records/${id}`, { method: 'DELETE' });
+  return { ok: res.ok, data: await res.json() };
+}
+
 async function fetchUniqueValues(customerFilter = '') {
   const params = customerFilter ? `?cliente=${encodeURIComponent(customerFilter)}` : '';
   const res = await fetch(`${API}/unique-values${params}`);
@@ -163,6 +178,45 @@ async function checkSimilarCustomers(name) {
   const res = await fetch(`${API}/check-customer?name=${encodeURIComponent(name)}`);
   const data = await res.json();
   return data.similar || [];
+}
+
+/* ─── Edit / Delete record ─────────────────────────── */
+function startEditRecord(r) {
+  _editId = r.id;
+  document.getElementById('new-cliente').value = r.cliente;
+  document.getElementById('new-torno').value = r.torno;
+  document.getElementById('new-tecnico').value = r.tecnico;
+  document.getElementById('new-fecha').value = r.fecha;
+  document.getElementById('new-comentarios').value = r.comentarios;
+  document.getElementById('btn-add').textContent = '✎ Update';
+  document.getElementById('btn-add').classList.add('btn-update');
+  const cancelBtn = document.getElementById('btn-cancel-edit');
+  if (cancelBtn) cancelBtn.style.display = 'inline-block';
+  switchTab('add');
+  checkSimilarCustomerWarning();
+}
+
+function cancelEdit() {
+  _editId = null;
+  document.getElementById('new-cliente').value = '';
+  document.getElementById('new-torno').value = '';
+  document.getElementById('new-tecnico').value = '';
+  document.getElementById('new-fecha').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('new-comentarios').value = '';
+  document.getElementById('btn-add').textContent = t('addBtn');
+  document.getElementById('btn-add').classList.remove('btn-update');
+  const cancelBtn = document.getElementById('btn-cancel-edit');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  document.getElementById('similar-warning').style.display = 'none';
+  onNewRecordCustomerChange();
+}
+
+async function confirmDelete(id) {
+  if (!confirm('Delete this record?')) return;
+  const result = await deleteRecordApi(id);
+  if (result.ok) {
+    await applyFilters();
+  }
 }
 
 /* ─── Get current filters ─────────────────────────── */
@@ -754,7 +808,7 @@ function renderPage() {
 
   const tbody = document.getElementById('results-body');
   if (pageRecords.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:2rem;">${t('noRecords')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:2rem;">${t('noRecords')}</td></tr>`;
   } else {
     tbody.innerHTML = pageRecords.map(r => `
       <tr>
@@ -762,7 +816,11 @@ function renderPage() {
         <td data-label="${t('machine')}">${escapeHtml(r.torno)}</td>
         <td data-label="${t('date')}">${escapeHtml(r.fecha)}</td>
         <td data-label="${t('technician')}">${renderTech(r.tecnico)}</td>
-        <td data-label="${t('description')}">${escapeHtml(r.comentarios)}</td>
+        <td data-label="${t('description')}" class="desc-cell">${escapeHtml(r.comentarios)}</td>
+        <td class="actions-cell">
+          <button class="btn-action btn-edit" onclick='startEditRecord(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="Edit">✎</button>
+          <button class="btn-action btn-delete" onclick="confirmDelete('${r.id}')" title="Delete">✕</button>
+        </td>
       </tr>
     `).join('');
   }
@@ -874,18 +932,30 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
     return;
   }
 
-  const result = await addRecord(data);
-  if (result.ok) {
-    showFeedback(t('addSuccess'), 'success');
-    document.getElementById('new-cliente').value = '';
-    document.getElementById('new-torno').value = '';
-    document.getElementById('new-tecnico').value = '';
-    document.getElementById('new-comentarios').value = '';
-    document.getElementById('new-fecha').value = new Date().toISOString().slice(0, 10);
-    // Refresh records
-    await applyFilters();
+  let result;
+  if (_editId) {
+    result = await updateRecord(_editId, data);
+    if (result.ok) {
+      showFeedback('✓ Record updated!', 'success');
+      cancelEdit();
+      await applyFilters();
+    } else {
+      showFeedback('✗ Error updating record', 'error');
+    }
   } else {
-    showFeedback(t('addError'), 'error');
+    result = await addRecord(data);
+    if (result.ok) {
+      showFeedback(t('addSuccess'), 'success');
+      document.getElementById('new-cliente').value = '';
+      document.getElementById('new-torno').value = '';
+      document.getElementById('new-tecnico').value = '';
+      document.getElementById('new-comentarios').value = '';
+      document.getElementById('new-fecha').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('similar-warning').style.display = 'none';
+      await applyFilters();
+    } else {
+      showFeedback(t('addError'), 'error');
+    }
   }
 });
 

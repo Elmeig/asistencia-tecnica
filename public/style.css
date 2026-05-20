@@ -417,6 +417,42 @@ main {
   box-shadow: var(--shadow-lg);
 }
 
+/* ─── Record action buttons ─────────────────────── */
+.actions-cell {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.btn-action {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 3px 6px;
+  margin: 0 2px;
+  color: var(--text-light);
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.btn-action:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+}
+
+.btn-action.btn-delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+[data-theme="dark"] .btn-action.btn-delete:hover {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
 .filter-actions {
   margin-top: 1.25rem;
   display: flex;

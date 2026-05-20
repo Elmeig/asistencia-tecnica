@@ -242,6 +242,44 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // ── Update a record ────────────────────────────────
+  const updateMatch = urlPath.match(/^\/api\/records\/([^/]+)$/);
+  if (updateMatch && method === 'PUT') {
+    const id = updateMatch[1];
+    try {
+      const body = await parseBody(req);
+      const idx = records.findIndex(r => r.id === id);
+      if (idx === -1) return json(res, { error: 'Not found' }, 404);
+      const updated = {
+        ...records[idx],
+        cliente: String(body.cliente || '').trim(),
+        torno: String(body.torno || '').trim(),
+        fecha: body.fecha || records[idx].fecha,
+        tecnico: String(body.tecnico || '').trim(),
+        comentarios: String(body.comentarios || '').trim(),
+      };
+      if (!updated.cliente || !updated.torno || !updated.tecnico) {
+        return json(res, { error: 'Missing required fields' }, 400);
+      }
+      records[idx] = updated;
+      saveRecords(records);
+      return json(res, updated);
+    } catch (e) {
+      return json(res, { error: 'Invalid JSON' }, 400);
+    }
+  }
+
+  // ── Delete a record ────────────────────────────────
+  const deleteMatch = urlPath.match(/^\/api\/records\/([^/]+)$/);
+  if (deleteMatch && method === 'DELETE') {
+    const id = deleteMatch[1];
+    const idx = records.findIndex(r => r.id === id);
+    if (idx === -1) return json(res, { error: 'Not found' }, 404);
+    const deleted = records.splice(idx, 1)[0];
+    saveRecords(records);
+    return json(res, { deleted: deleted.id });
+  }
+
   if (urlPath === '/api/export' && method === 'GET') {
     const filtered = filterRecords(query);
     const buf = buildXlsx(filtered);
