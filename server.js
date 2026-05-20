@@ -172,6 +172,54 @@ const server = http.createServer(async (req, res) => {
     return json(res, { total: filtered.length, records: filtered });
   }
 
+  // ── All unique customers (for combobox dropdown) ─────
+  if (urlPath === '/api/customers' && method === 'GET') {
+    const customers = [...new Set(records.map(r => r.cliente).filter(Boolean))].sort();
+    return json(res, { customers });
+  }
+
+  // ── Unique values for dropdowns + cascading ──
+  if (urlPath === '/api/unique-values' && method === 'GET') {
+    const customer = query.cliente || '';
+    let machines = [...new Set(records.map(r => r.torno).filter(Boolean))].sort();
+    let technicians = [...new Set(records.map(r => r.tecnico).filter(Boolean))].sort();
+    let dates = [...new Set(records.map(r => r.fecha).filter(Boolean))].sort().reverse();
+
+    if (customer) {
+      // Cascade: only show machines/technicians/dates that appear with this customer
+      const linked = records.filter(r => r.cliente.toLowerCase() === customer.toLowerCase());
+      machines = [...new Set(linked.map(r => r.torno).filter(Boolean))].sort();
+      technicians = [...new Set(linked.map(r => r.tecnico).filter(Boolean))].sort();
+      dates = [...new Set(linked.map(r => r.fecha).filter(Boolean))].sort().reverse();
+    }
+
+    return json(res, { machines, technicians, dates });
+  }
+
+  // ── Check for similar customer names (new record warning) ──
+  if (urlPath === '/api/check-customer' && method === 'GET') {
+    const name = (query.name || '').trim().toLowerCase();
+    if (!name || name.length < 2) return json(res, { similar: [] });
+
+    const similar = records
+      .map(r => r.cliente)
+      .filter(Boolean)
+      .filter(c => {
+        const cl = c.toLowerCase();
+        // Exact match → skip (not similar, it's the same)
+        if (cl === name) return false;
+        // Contains check (both ways) — case insensitive
+        if (cl.includes(name) || name.includes(cl)) return true;
+        // Starts with same first 3 chars — catches typos & fragments
+        if (cl.slice(0, 3) === name.slice(0, 3)) return true;
+        return false;
+      })
+      .filter((v, i, a) => a.indexOf(v) === i) // dedupe
+      .slice(0, 5);
+
+    return json(res, { similar });
+  }
+
   if (urlPath === '/api/records' && method === 'POST') {
     try {
       const body = await parseBody(req);

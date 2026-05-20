@@ -44,20 +44,45 @@
         <form id="add-form">
           <div class="form-grid">
             <div class="field">
-              <label for="new-cliente" data-i18n="customer">Customer</label>
-              <input type="text" id="new-cliente" required autocomplete="off">
+              <label data-i18n="customer">Customer</label>
+              <div class="combobox-wrap">
+                <input type="text" id="new-cliente" class="combobox-input" required autocomplete="off"
+                  placeholder="— Type or click to select —"
+                  oninput="onNewRecordCustomerChange(); checkSimilarCustomerWarning(); filterCustomerDropdown(this.value, 'new');"
+                  onclick="toggleCustomerDropdown('new')"
+                  onkeydown="handleCustomerKeydown(event, 'new')">
+                <div class="combobox-dropdown" id="new-cliente-dropdown"></div>
+              </div>
+              <div class="similar-warning" id="similar-warning" style="display:none;">
+                ⚠️ <span id="similar-names"></span>
+              </div>
             </div>
             <div class="field">
-              <label for="new-torno" data-i18n="machine">Machine</label>
-              <input type="text" id="new-torno" required autocomplete="off">
+              <label data-i18n="machine">Machine</label>
+              <div class="combobox-wrap">
+                <input type="text" id="new-torno" class="combobox-input" required autocomplete="off"
+                  placeholder="— Type or click to select —"
+                  oninput="filterNewMachineDropdown(this.value)"
+                  onclick="openNewMachineDropdown()"
+                  onkeydown="handleNewMachineKeydown(event)">
+                <div class="combobox-dropdown" id="new-torno-dropdown"></div>
+              </div>
             </div>
             <div class="field">
-              <label for="new-tecnico" data-i18n="technician">Technician</label>
-              <input type="text" id="new-tecnico" required autocomplete="off">
+              <label data-i18n="technician">Technician</label>
+              <div class="combobox-wrap">
+                <input type="text" id="new-tecnico" class="combobox-input" required autocomplete="off"
+                  placeholder="— Type or click to select —"
+                  oninput="filterNewTechnicianDropdown(this.value)"
+                  onclick="openNewTechnicianDropdown()"
+                  onkeydown="handleNewTechnicianKeydown(event)">
+                <div class="combobox-dropdown" id="new-tecnico-dropdown"></div>
+              </div>
             </div>
             <div class="field">
               <label for="new-fecha" data-i18n="date">Date</label>
-              <input type="date" id="new-fecha">
+              <input type="date" id="new-fecha" list="date-suggestions-new">
+              <datalist id="date-suggestions-new"></datalist>
             </div>
             <div class="field full-width">
               <label for="new-comentarios" data-i18n="description">Description</label>
@@ -78,25 +103,38 @@
         <h2>🔍 <span data-i18n="filterTitle">Search & Filter</span></h2>
         <div class="form-grid">
           <div class="field">
-            <label for="f-cliente" data-i18n="customer">Customer</label>
-            <input type="text" id="f-cliente" autocomplete="off">
+            <label data-i18n="customer">Customer</label>
+            <div class="combobox-wrap">
+              <input type="text" id="f-cliente" class="combobox-input"
+                autocomplete="off" placeholder="— Type or click to select —"
+                oninput="onFilterCustomerInput(this.value); filterCustomerDropdown(this.value, 'f');"
+                onclick="toggleCustomerDropdown('f')"
+                onkeydown="handleCustomerKeydown(event, 'f')">
+              <div class="combobox-dropdown" id="f-cliente-dropdown"></div>
+              <input type="hidden" id="f-cliente-val">
+            </div>
           </div>
           <div class="field">
             <label for="f-torno" data-i18n="machine">Machine</label>
-            <input type="text" id="f-torno" autocomplete="off">
+            <select id="f-torno" onchange="onMachineChange()">
+              <option value="">— <span data-i18n="machine">Machine</span> —</option>
+            </select>
           </div>
           <div class="field">
             <label for="f-tecnico" data-i18n="technician">Technician</label>
-            <input type="text" id="f-tecnico" autocomplete="off">
+            <select id="f-tecnico">
+              <option value="">— <span data-i18n="technician">Technician</span> —</option>
+            </select>
           </div>
           <div class="field spacer-field"></div>
           <div class="field">
             <label for="f-desde" data-i18n="dateFrom">Date From</label>
-            <input type="date" id="f-desde">
+            <input type="date" id="f-desde" list="date-suggestions">
+            <datalist id="date-suggestions"></datalist>
           </div>
           <div class="field">
             <label for="f-hasta" data-i18n="dateTo">Date To</label>
-            <input type="date" id="f-hasta">
+            <input type="date" id="f-hasta" list="date-suggestions">
           </div>
         </div>
         <div class="filter-actions">

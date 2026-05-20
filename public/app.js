@@ -100,6 +100,12 @@ function setLang(lang) {
     if (i18n[lang][key]) el.textContent = i18n[lang][key];
   });
 
+  // Re-apply cascade select placeholders (they contain translated labels)
+  populateSelect('f-torno', _cascadeData.machines, '— ' + t('machine') + ' —');
+  populateSelect('f-tecnico', _cascadeData.technicians, '— ' + t('technician') + ' —');
+  populateSelect('new-torno', _cascadeData.machines, '— ' + t('machine') + ' —');
+  populateSelect('new-tecnico', _cascadeData.technicians, '— ' + t('technician') + ' —');
+
   updateRecordCount();
   renderPage();
   updateFilterIndicator();
@@ -146,6 +152,19 @@ async function addRecord(data) {
   return { ok: res.ok, data: await res.json() };
 }
 
+async function fetchUniqueValues(customerFilter = '') {
+  const params = customerFilter ? `?cliente=${encodeURIComponent(customerFilter)}` : '';
+  const res = await fetch(`${API}/unique-values${params}`);
+  return res.json();
+}
+
+async function checkSimilarCustomers(name) {
+  if (!name || name.trim().length < 2) return [];
+  const res = await fetch(`${API}/check-customer?name=${encodeURIComponent(name)}`);
+  const data = await res.json();
+  return data.similar || [];
+}
+
 /* ─── Get current filters ─────────────────────────── */
 function getFilters() {
   return {
@@ -160,6 +179,508 @@ function getFilters() {
 function hasActiveFilters() {
   const f = getFilters();
   return f.cliente || f.torno || f.tecnico || f.desde || f.hasta;
+}
+
+/* ─── Cascading dropdowns ──────────────────────────── */
+function populateSelect(id, options, placeholder = '') {
+  const el = document.getElementById(id);
+  const current = el.value;
+  el.innerHTML = '';
+  if (placeholder) {
+    const opt = document.createElement('option');
+    opt.value = ''; opt.textContent = placeholder;
+    el.appendChild(opt);
+  }
+  options.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    el.appendChild(opt);
+  });
+  // Restore value only if it still exists in new options
+  if (options.includes(current)) {
+    el.value = current;
+  }
+}
+
+let _cascadeData = { machines: [], technicians: [], dates: [] };
+
+async function refreshCascadeSelects(customerFilter = '') {
+  const data = await fetchUniqueValues(customerFilter);
+  _cascadeData = data;
+
+  // Filter form selects
+  populateSelect('f-torno', data.machines, '— ' + t('machine') + ' —');
+  populateSelect('f-tecnico', data.technicians, '— ' + t('technician') + ' —');
+
+  // New record form selects
+  populateSelect('new-torno', data.machines, '— ' + t('machine') + ' —');
+  populateSelect('new-tecnico', data.technicians, '— ' + t('technician') + ' —');
+}
+
+async function onFilterCustomerInput(value) {
+  // Called on every keystroke — cascades machine/technician
+  await refreshCascadeSelects(value);
+}
+
+async function onFilterCustomerChange() {
+  const customer = document.getElementById('f-cliente').value;
+  const data = await fetchUniqueValues(customer);
+  _cascadeData = data;
+  populateSelect('f-torno', data.machines, '— ' + t('machine') + ' —');
+  populateSelect('f-tecnico', data.technicians, '— ' + t('technician') + ' —');
+  // Update filter date datalist with customer-linked dates (only the filter datalist)
+  const dl = document.getElementById('date-suggestions');
+  if (dl) {
+    dl.innerHTML = '';
+    data.dates.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      dl.appendChild(opt);
+    });
+  }
+  // NOTE: do NOT clear machine/technician values here — we want to preserve them
+}
+
+async function onMachineChange() {
+  // When machine changes, cascade to narrow technician list + re-fetch records
+  const customer = document.getElementById('f-cliente').value;
+  const machine = document.getElementById('f-torno').value;
+  const data = await fetchUniqueValues(customer);
+  _cascadeData = data;
+  // Repopulate technician with only those linked to this customer+machine
+  populateSelect('f-tecnico', data.technicians, '— ' + t('technician') + ' —');
+  // Update date datalist with customer+machine filtered dates
+  const dl = document.getElementById('date-suggestions');
+  if (dl) {
+    dl.innerHTML = '';
+    data.dates.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      dl.appendChild(opt);
+    });
+  }
+  // Apply filters so records update with the new machine selection
+  applyFilters();
+}
+
+async function onNewRecordCustomerChange() {
+  const customer = document.getElementById('new-cliente').value;
+  // Reload cascade to narrow machine/technician options
+  const data = await fetchUniqueValues(customer);
+  _cascadeData = data;
+  // Populate the new-record combobox lists for machine and technician
+  _machineList = data.machines.slice();
+  _technicianList = data.technicians.slice();
+  // Auto-select first option if there's exactly one match
+  if (_machineList.length === 1) document.getElementById('new-torno').value = _machineList[0];
+  if (_technicianList.length === 1) document.getElementById('new-tecnico').value = _technicianList[0];
+}
+
+/* ─── Customer similarity warning ─────────────────── */
+let _similarTimer = null;
+async function checkSimilarCustomerWarning() {
+  clearTimeout(_similarTimer);
+  _similarTimer = setTimeout(async () => {
+    const name = document.getElementById('new-cliente').value.trim();
+    const warn = document.getElementById('similar-warning');
+    const nameList = document.getElementById('similar-names');
+    if (!name || name.length < 2) {
+      warn.style.display = 'none';
+      return;
+    }
+    const similar = await checkSimilarCustomers(name);
+    if (similar.length > 0) {
+      nameList.textContent = similar.map(s => `"${s}"`).join(', ');
+      warn.style.display = 'block';
+    } else {
+      warn.style.display = 'none';
+    }
+  }, 350);
+}
+
+async function populateCustomerDatalist() {
+  const dl = document.getElementById('customer-suggestions');
+  dl.innerHTML = '';
+  const unique = [...new Set(currentRecords.map(r => r.cliente).filter(Boolean))].sort();
+  unique.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    dl.appendChild(opt);
+  });
+}
+
+function populateDateDatalist(dates) {
+  const dl1 = document.getElementById('date-suggestions');
+  const dl2 = document.getElementById('date-suggestions-new');
+  [dl1, dl2].forEach(dl => {
+    if (!dl) return;
+    dl.innerHTML = '';
+    dates.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      dl.appendChild(opt);
+    });
+  });
+}
+
+/* ─── Customer Combobox (click to show + type to filter) ─ */
+let _customerList = [];
+let _customerListLoaded = false;
+let _highlightedIndex = -1;
+
+async function getCustomerList() {
+  if (!_customerListLoaded) {
+    try {
+      const res = await fetch(`${API}/customers`);
+      const data = await res.json();
+      _customerList = data.customers || [];
+      _customerListLoaded = true;
+    } catch {
+      _customerList = [];
+    }
+  }
+  return _customerList;
+}
+
+function getDropdownId(prefix) {
+  return `${prefix}-cliente-dropdown`;
+}
+
+function getInputId(prefix) {
+  return `${prefix}-cliente`;
+}
+
+function toggleCustomerDropdown(prefix) {
+  const input = document.getElementById(getInputId(prefix));
+  const dropdown = document.getElementById(getDropdownId(prefix));
+  if (dropdown.classList.contains('open')) {
+    closeCustomerDropdown(prefix);
+  } else {
+    filterCustomerDropdown(input.value, prefix, true);
+  }
+}
+
+function closeCustomerDropdown(prefix) {
+  const dropdown = document.getElementById(getDropdownId(prefix));
+  dropdown.classList.remove('open');
+  _highlightedIndex = -1;
+}
+
+function closeAllCustomerDropdowns() {
+  ['f', 'new'].forEach(p => closeCustomerDropdown(p));
+}
+
+async function filterCustomerDropdown(value, prefix, openOnEmpty = false) {
+  const dropdown = document.getElementById(getDropdownId(prefix));
+  const list = await getCustomerList();
+  const q = value.trim().toLowerCase();
+
+  if (!openOnEmpty && !q && dropdown.classList.contains('open')) {
+    closeCustomerDropdown(prefix);
+    return;
+  }
+
+  const filtered = q
+    ? list.filter(c => c.toLowerCase().includes(q))
+    : list;
+
+  if (filtered.length === 0) {
+    dropdown.classList.remove('open');
+    return;
+  }
+
+  dropdown.innerHTML = '';
+  filtered.forEach((name, i) => {
+    const item = document.createElement('div');
+    item.className = 'combobox-item';
+    item.dataset.value = name;
+    item.textContent = name;
+    if (q) {
+      // Highlight matching substring
+      const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      item.innerHTML = name.replace(re, '<mark>$1</mark>');
+    }
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // prevent blur before selection
+      selectCustomerItem(name, prefix);
+    });
+    item.addEventListener('mouseenter', () => {
+      _highlightedIndex = i;
+      updateHighlight(prefix);
+    });
+    dropdown.appendChild(item);
+  });
+
+  dropdown.classList.add('open');
+  _highlightedIndex = -1;
+}
+
+function updateHighlight(prefix) {
+  const dropdown = document.getElementById(getDropdownId(prefix));
+  dropdown.querySelectorAll('.combobox-item').forEach((item, i) => {
+    item.classList.toggle('highlighted', i === _highlightedIndex);
+  });
+}
+
+function selectCustomerItem(name, prefix) {
+  const input = document.getElementById(getInputId(prefix));
+  input.value = name;
+  closeCustomerDropdown(prefix);
+
+  if (prefix === 'f') {
+    onFilterCustomerChange();
+    // Immediately apply filters so records update without extra click
+    applyFilters();
+  } else {
+    onNewRecordCustomerChange();
+  }
+  checkSimilarCustomerWarning();
+}
+
+function handleCustomerKeydown(event, prefix) {
+  const dropdown = document.getElementById(getDropdownId(prefix));
+  const items = dropdown.querySelectorAll('.combobox-item');
+  if (!dropdown.classList.contains('open')) {
+    if (event.key === 'ArrowDown' || event.key === 'Enter') {
+      filterCustomerDropdown('', prefix, true);
+    }
+    return;
+  }
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    _highlightedIndex = Math.min(_highlightedIndex + 1, items.length - 1);
+    updateHighlight(prefix);
+    items[_highlightedIndex]?.scrollIntoView({ block: 'nearest' });
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    _highlightedIndex = Math.max(_highlightedIndex - 1, -1);
+    updateHighlight(prefix);
+    if (_highlightedIndex === -1) {
+      document.getElementById(getInputId(prefix)).focus();
+    }
+  } else if (event.key === 'Enter') {
+    if (_highlightedIndex >= 0 && items[_highlightedIndex]) {
+      selectCustomerItem(items[_highlightedIndex].dataset.value, prefix);
+    }
+    closeCustomerDropdown(prefix);
+  } else if (event.key === 'Escape') {
+    closeCustomerDropdown(prefix);
+  } else if (event.key === 'Tab') {
+    closeCustomerDropdown(prefix);
+  }
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.combobox-wrap')) {
+    closeAllCustomerDropdowns();
+    closeNewMachineDropdown();
+    closeNewTechnicianDropdown();
+  }
+});
+
+/* ─── Machine combobox (new record form) ────────────── */
+let _machineList = [];
+let _machineHighlightedIndex = -1;
+
+function closeNewMachineDropdown() {
+  const dd = document.getElementById('new-torno-dropdown');
+  if (!dd) return;
+  dd.classList.remove('open');
+  _machineHighlightedIndex = -1;
+}
+
+function openNewMachineDropdown() {
+  const input = document.getElementById('new-torno');
+  const dd = document.getElementById('new-torno-dropdown');
+  dd.innerHTML = '';
+  if (_machineList.length === 0) {
+    dd.classList.remove('open');
+    return;
+  }
+  _machineList.forEach((name, i) => {
+    const item = document.createElement('div');
+    item.className = 'combobox-item';
+    item.dataset.value = name;
+    item.textContent = name;
+    item.addEventListener('mousedown', (e) => { e.preventDefault(); selectNewMachineItem(name); });
+    item.addEventListener('mouseenter', () => { _machineHighlightedIndex = i; updateMachineHighlight(); });
+    dd.appendChild(item);
+  });
+  dd.classList.add('open');
+  _machineHighlightedIndex = -1;
+}
+
+function filterNewMachineDropdown(value) {
+  const input = document.getElementById('new-torno');
+  const dd = document.getElementById('new-torno-dropdown');
+  const q = value.trim().toLowerCase();
+  if (!q) { closeNewMachineDropdown(); return; }
+  const filtered = _machineList.filter(m => m.toLowerCase().includes(q));
+  if (filtered.length === 0) { dd.classList.remove('open'); return; }
+  dd.innerHTML = '';
+  filtered.forEach((name, i) => {
+    const item = document.createElement('div');
+    item.className = 'combobox-item';
+    item.dataset.value = name;
+    item.textContent = name;
+    if (q) {
+      const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      item.innerHTML = name.replace(re, '<mark>$1</mark>');
+    }
+    item.addEventListener('mousedown', (e) => { e.preventDefault(); selectNewMachineItem(name); });
+    item.addEventListener('mouseenter', () => { _machineHighlightedIndex = i; updateMachineHighlight(); });
+    dd.appendChild(item);
+  });
+  dd.classList.add('open');
+  _machineHighlightedIndex = -1;
+}
+
+function updateMachineHighlight() {
+  const dd = document.getElementById('new-torno-dropdown');
+  dd.querySelectorAll('.combobox-item').forEach((item, i) => {
+    item.classList.toggle('highlighted', i === _machineHighlightedIndex);
+  });
+}
+
+function selectNewMachineItem(name) {
+  document.getElementById('new-torno').value = name;
+  closeNewMachineDropdown();
+}
+
+function handleNewMachineKeydown(event) {
+  const dd = document.getElementById('new-torno-dropdown');
+  const items = [...dd.querySelectorAll('.combobox-item')];
+  if (!dd.classList.contains('open')) {
+    if (event.key === 'ArrowDown' || event.key === 'Enter') openNewMachineDropdown();
+    return;
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    _machineHighlightedIndex = Math.min(_machineHighlightedIndex + 1, items.length - 1);
+    updateMachineHighlight();
+    items[_machineHighlightedIndex]?.scrollIntoView({ block: 'nearest' });
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    _machineHighlightedIndex = Math.max(_machineHighlightedIndex - 1, -1);
+    updateMachineHighlight();
+  } else if (event.key === 'Enter') {
+    if (_machineHighlightedIndex >= 0 && items[_machineHighlightedIndex]) {
+      selectNewMachineItem(items[_machineHighlightedIndex].dataset.value);
+    }
+    closeNewMachineDropdown();
+  } else if (event.key === 'Escape') {
+    closeNewMachineDropdown();
+  } else if (event.key === 'Tab') {
+    closeNewMachineDropdown();
+  }
+}
+
+/* ─── Technician combobox (new record form) ─────────── */
+let _technicianList = [];
+let _technicianHighlightedIndex = -1;
+
+function closeNewTechnicianDropdown() {
+  const dd = document.getElementById('new-tecnico-dropdown');
+  if (!dd) return;
+  dd.classList.remove('open');
+  _technicianHighlightedIndex = -1;
+}
+
+function openNewTechnicianDropdown() {
+  const dd = document.getElementById('new-tecnico-dropdown');
+  dd.innerHTML = '';
+  if (_technicianList.length === 0) { dd.classList.remove('open'); return; }
+  _technicianList.forEach((name, i) => {
+    const item = document.createElement('div');
+    item.className = 'combobox-item';
+    item.dataset.value = name;
+    item.textContent = name;
+    item.addEventListener('mousedown', (e) => { e.preventDefault(); selectNewTechnicianItem(name); });
+    item.addEventListener('mouseenter', () => { _technicianHighlightedIndex = i; updateTechnicianHighlight(); });
+    dd.appendChild(item);
+  });
+  dd.classList.add('open');
+  _technicianHighlightedIndex = -1;
+}
+
+function filterNewTechnicianDropdown(value) {
+  const dd = document.getElementById('new-tecnico-dropdown');
+  const q = value.trim().toLowerCase();
+  if (!q) { closeNewTechnicianDropdown(); return; }
+  const filtered = _technicianList.filter(t => t.toLowerCase().includes(q));
+  if (filtered.length === 0) { dd.classList.remove('open'); return; }
+  dd.innerHTML = '';
+  filtered.forEach((name, i) => {
+    const item = document.createElement('div');
+    item.className = 'combobox-item';
+    item.dataset.value = name;
+    item.textContent = name;
+    if (q) {
+      const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      item.innerHTML = name.replace(re, '<mark>$1</mark>');
+    }
+    item.addEventListener('mousedown', (e) => { e.preventDefault(); selectNewTechnicianItem(name); });
+    item.addEventListener('mouseenter', () => { _technicianHighlightedIndex = i; updateTechnicianHighlight(); });
+    dd.appendChild(item);
+  });
+  dd.classList.add('open');
+  _technicianHighlightedIndex = -1;
+}
+
+function updateTechnicianHighlight() {
+  const dd = document.getElementById('new-tecnico-dropdown');
+  dd.querySelectorAll('.combobox-item').forEach((item, i) => {
+    item.classList.toggle('highlighted', i === _technicianHighlightedIndex);
+  });
+}
+
+function selectNewTechnicianItem(name) {
+  document.getElementById('new-tecnico').value = name;
+  closeNewTechnicianDropdown();
+}
+
+function handleNewTechnicianKeydown(event) {
+  const dd = document.getElementById('new-tecnico-dropdown');
+  const items = [...dd.querySelectorAll('.combobox-item')];
+  if (!dd.classList.contains('open')) {
+    if (event.key === 'ArrowDown' || event.key === 'Enter') openNewTechnicianDropdown();
+    return;
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    _technicianHighlightedIndex = Math.min(_technicianHighlightedIndex + 1, items.length - 1);
+    updateTechnicianHighlight();
+    items[_technicianHighlightedIndex]?.scrollIntoView({ block: 'nearest' });
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    _technicianHighlightedIndex = Math.max(_technicianHighlightedIndex - 1, -1);
+    updateTechnicianHighlight();
+  } else if (event.key === 'Enter') {
+    if (_technicianHighlightedIndex >= 0 && items[_technicianHighlightedIndex]) {
+      selectNewTechnicianItem(items[_technicianHighlightedIndex].dataset.value);
+    }
+    closeNewTechnicianDropdown();
+  } else if (event.key === 'Escape') {
+    closeNewTechnicianDropdown();
+  } else if (event.key === 'Tab') {
+    closeNewTechnicianDropdown();
+  }
+}
+
+// Auto-apply filter when customer combobox selection changes via hidden input
+const _fClienteHidden = document.getElementById('f-cliente-val');
+if (_fClienteHidden) {
+  const _observer = new MutationObserver(() => {
+    const val = _fClienteHidden.value;
+    if (val) {
+      document.getElementById('f-cliente').value = val;
+      onFilterCustomerChange();
+      applyFilters();
+    }
+  });
+  _observer.observe(_fClienteHidden, { attributes: true, attributeFilter: ['value'] });
 }
 
 /* ─── Filter indicator ────────────────────────────── */
@@ -303,12 +824,16 @@ async function applyFiltersAndShow() {
 }
 
 function clearFilters() {
+  // Reset customer text inputs
   document.getElementById('f-cliente').value = '';
+  _customerList = []; // force refresh
+
   document.getElementById('f-torno').value = '';
   document.getElementById('f-tecnico').value = '';
   document.getElementById('f-desde').value = '';
   document.getElementById('f-hasta').value = '';
-  applyFilters();
+  // Reset cascade selects to show all
+  refreshCascadeSelects('');
 }
 
 /* ─── Export ──────────────────────────────────────── */
@@ -379,5 +904,24 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
   // Load all records
   const result = await fetchRecords();
   currentRecords = result.records;
+
+  // Refresh customer list cache
+  _customerList = [];
+
+  // Populate cascade selects (all values initially)
+  await refreshCascadeSelects('');
+
+  // Also seed machine/technician lists for new-record comboboxes
+  if (_cascadeData) {
+    _machineList = (_cascadeData.machines || []).slice();
+    _technicianList = (_cascadeData.technicians || []).slice();
+  }
+
+  // Populate date datalist
+  const dates = [...new Set(currentRecords.map(r => r.fecha).filter(Boolean))].sort().reverse();
+  populateDateDatalist(dates);
+
+  // Populate customer datalist for new-record autocomplete (DEPRECATED — now using combobox)
+
   renderPage();
 })();
