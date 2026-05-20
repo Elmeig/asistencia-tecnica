@@ -412,9 +412,16 @@ main {
   font-size: 1rem;
   padding: 12px 28px;
 }
-.btn-export:hover {
-  background: #15803d;
-  box-shadow: var(--shadow-lg);
+.btn-upload {
+  background: var(--bg);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  font-size: 1rem;
+  padding: 12px 28px;
+}
+.btn-upload:hover {
+  background: var(--hover-bg);
+  box-shadow: var(--shadow-md);
 }
 
 /* ─── Record action buttons ─────────────────────── */

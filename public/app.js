@@ -911,6 +911,53 @@ function exportXlsx() {
   window.location.href = `${API}/export${qs ? '?' + qs : ''}`;
 }
 
+/* ─── Upload xlsx ─────────────────────────────────── */
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('upload-filename').textContent = file.name;
+  uploadXlsx(file);
+}
+
+async function uploadXlsx(file) {
+  const progress = document.getElementById('upload-progress');
+  const result = document.getElementById('upload-result');
+  progress.style.display = 'block';
+  result.textContent = '⏳ Uploading…';
+  result.className = 'feedback show';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch(`${API}/upload`, { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (!res.ok) {
+      result.textContent = `✗ ${data.error || 'Upload failed'}`;
+      result.className = 'feedback show error';
+      return;
+    }
+
+    const { inserted, updated, skipped, total } = data;
+    result.innerHTML =
+      `✓ Done! Inserted: <b>${inserted}</b> · Updated: <b>${updated}</b> · Skipped: <b>${skipped}</b> · Total records: <b>${total}</b>`;
+    result.className = 'feedback show success';
+
+    // Refresh records
+    await applyFilters();
+
+    // Clear file input after 4s
+    setTimeout(() => {
+      document.getElementById('upload-file').value = '';
+      document.getElementById('upload-filename').textContent = '';
+    }, 4000);
+  } catch (err) {
+    result.textContent = `✗ Network error: ${err.message}`;
+    result.className = 'feedback show error';
+  }
+}
+
 /* ─── Add Record form ─────────────────────────────── */
 function showFeedback(msg, type) {
   const el = document.getElementById('add-feedback');

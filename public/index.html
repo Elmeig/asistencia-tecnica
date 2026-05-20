@@ -156,6 +156,20 @@
           <span data-i18n="exportBtn">📥 Download XLSX</span>
         </button>
       </div>
+
+      <!-- Upload -->
+      <div class="card export-card">
+        <h2>📤 <span>Import / Upload</span></h2>
+        <p>Upload an Excel (.xlsx) file to bulk-import records. Duplicate records (same Customer + Machine + Date + Technician) are skipped or updated with new data.</p>
+        <input type="file" id="upload-file" accept=".xlsx,.xls" style="display:none;" onchange="handleFileSelect(this)">
+        <button class="btn btn-upload" onclick="document.getElementById('upload-file').click()">
+          📂 Choose file
+        </button>
+        <span id="upload-filename" style="margin-left:8px;color:var(--text-light);font-size:0.9rem;"></span>
+        <div id="upload-progress" style="display:none;margin-top:12px;">
+          <div class="feedback" id="upload-result"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ─── Tab 3: Records ─────────────────────── -->

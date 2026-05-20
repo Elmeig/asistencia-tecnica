@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 const { v4: uuidv4 } = require('uuid');
+const Busboy = require('busboy');
 
 const PORT = 3001;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -92,7 +93,7 @@ function json(res, data, status = 200) {
 function cors(res) {
   res.writeHead(204, {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   });
   res.end();
@@ -278,6 +279,110 @@ const server = http.createServer(async (req, res) => {
     const deleted = records.splice(idx, 1)[0];
     saveRecords(records);
     return json(res, { deleted: deleted.id });
+  }
+
+  // ── Upload xlsx and upsert records ──────────────────
+  if (urlPath === '/api/upload' && method === 'POST') {
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return json(res, { error: 'multipart/form-data required' }, 400);
+    }
+
+    const busboy = Busboy({ headers: { 'content-type': contentType } });
+    let fileBuffer = null;
+    let fileName = '';
+
+    busboy.on('file', (field, stream, info) => {
+      fileName = info.filename;
+      const chunks = [];
+      stream.on('data', chunk => chunks.push(chunk));
+      stream.on('end', () => { fileBuffer = Buffer.concat(chunks); });
+    });
+
+    busboy.on('finish', () => {
+      if (!fileBuffer) return json(res, { error: 'No file received' }, 400);
+
+      let workbook;
+      try {
+        workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+      } catch (e) {
+        return json(res, { error: 'Invalid xlsx file' }, 400);
+      }
+
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      if (rows.length < 2) {
+        return json(res, { error: 'File has no data rows' }, 400);
+      }
+
+      const header = rows[0].map(h => String(h).trim());
+      const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const colMap = {
+        cliente:     header.findIndex(h => norm(h).includes('cliente')),
+        torno:       header.findIndex(h => /torno|maquina|machine/i.test(h)),
+        fecha:       header.findIndex(h => norm(h).includes('fecha') || h.toLowerCase().includes('date')),
+        tecnico:     header.findIndex(h => norm(h).includes('tecnic')),
+        comentarios: header.findIndex(h => /comentarios|description|desc/i.test(h)),
+      };
+
+      const missing = Object.entries(colMap).filter(([, i]) => i === -1).map(([k]) => k);
+      if (missing.length > 0) {
+        return json(res, { error: `Missing columns: ${missing.join(', ')}` }, 400);
+      }
+
+      // Build a quick lookup key: "cliente|torno|teamDate|tecnico"
+      const keyFor = (r) => [
+        norm(r.cliente),
+        norm(r.torno),
+        String(r.fecha || '').trim(),
+        norm(r.tecnico),
+      ].join('|');
+
+      const existingKeys = new Set(records.map(keyFor));
+
+      let inserted = 0, updated = 0, skipped = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const cliente     = String(row[colMap.cliente]    || '').trim();
+        const torno       = String(row[colMap.torno]      || '').trim();
+        const fecha       = String(row[colMap.fecha]       || '').trim();
+        const tecnico     = String(row[colMap.tecnico]    || '').trim();
+        const comentarios = String(row[colMap.comentarios] || '').trim();
+
+        if (!cliente || !torno || !tecnico) continue; // skip invalid rows
+
+        const newRecord = { cliente, torno, fecha, tecnico, comentarios };
+        const key = keyFor(newRecord);
+
+        if (existingKeys.has(key)) {
+          // Find and update existing record
+          const idx = records.findIndex(r => keyFor(r) === key);
+          if (idx !== -1) {
+            const same = records[idx].comentarios === comentarios;
+            if (!same) {
+              records[idx] = { ...records[idx], comentarios };
+              updated++;
+            } else {
+              skipped++;
+            }
+          } else {
+            skipped++;
+          }
+        } else {
+          records.push({ id: uuidv4(), ...newRecord });
+          inserted++;
+          existingKeys.add(key); // prevent duplicates within same upload
+        }
+      }
+
+      saveRecords(records);
+      return json(res, { inserted, updated, skipped, total: records.length });
+    });
+
+    req.pipe(busboy);
+    return;
   }
 
   if (urlPath === '/api/export' && method === 'GET') {
