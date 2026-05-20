@@ -9,7 +9,14 @@ const server = http.createServer((req, res) => {
   const pathname = parsed.pathname;
   const search = parsed.search || '';
 
-  if (pathname.startsWith('/asistencia')) {
+  if (pathname === '/asistencia') {
+    // Redirect /asistencia → /asistencia/ so relative asset URLs (style.css, app.js) resolve correctly
+    res.writeHead(301, { Location: '/asistencia/' + search });
+    res.end();
+    return;
+  }
+
+  if (pathname.startsWith('/asistencia/')) {
     // Strip /asistencia prefix for requests to asistencia app (port 3001)
     const newPath = pathname.replace(/^\/asistencia/, '') || '/';
     const target = ASISTENCIA + newPath + search;
