@@ -96,7 +96,8 @@ body {
 .lang-toggle {
   position: absolute;
   top: 50%;
-  right: 16px;
+  left: 16px;
+  right: auto;
   transform: translateY(-50%);
   display: flex;
   gap: 4px;
