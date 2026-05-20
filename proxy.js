@@ -9,9 +9,10 @@ const server = http.createServer((req, res) => {
   const pathname = parsed.pathname;
   const search = parsed.search || '';
 
-  if (pathname.startsWith('/asistencia/')) {
-    const newPath = (pathname.replace(/^\/asistencia/, '') || '/') + search;
-    const target = ASISTENCIA + newPath;
+  if (pathname.startsWith('/asistencia')) {
+    // Strip /asistencia prefix for requests to asistencia app (port 3001)
+    const newPath = pathname.replace(/^\/asistencia/, '') || '/';
+    const target = ASISTENCIA + newPath + search;
     const proxyReq = http.request(target, { method: req.method, headers: req.headers }, (proxyRes) => {
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       proxyRes.pipe(res);
