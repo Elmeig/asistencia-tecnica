@@ -418,19 +418,29 @@ main {
 }
 
 /* ─── Record action buttons ─────────────────────── */
-.actions-cell {
-  white-space: nowrap;
-  text-align: center;
+.desc-cell {
+  position: relative;
+}
+
+.desc-text {
+  padding-right: 56px; /* space for action buttons */
+}
+
+.desc-actions {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
 }
 
 .btn-action {
-  background: none;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.75rem;
-  padding: 3px 6px;
-  margin: 0 2px;
+  font-size: 0.7rem;
+  padding: 2px 5px;
   color: var(--text-light);
   transition: all 0.15s;
   line-height: 1;

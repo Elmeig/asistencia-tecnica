@@ -808,7 +808,7 @@ function renderPage() {
 
   const tbody = document.getElementById('results-body');
   if (pageRecords.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:2rem;">${t('noRecords')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:2rem;">${t('noRecords')}</td></tr>`;
   } else {
     tbody.innerHTML = pageRecords.map(r => `
       <tr>
@@ -816,10 +816,12 @@ function renderPage() {
         <td data-label="${t('machine')}">${escapeHtml(r.torno)}</td>
         <td data-label="${t('date')}">${escapeHtml(r.fecha)}</td>
         <td data-label="${t('technician')}">${renderTech(r.tecnico)}</td>
-        <td data-label="${t('description')}" class="desc-cell">${escapeHtml(r.comentarios)}</td>
-        <td class="actions-cell">
-          <button class="btn-action btn-edit" onclick='startEditRecord(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="Edit">✎</button>
-          <button class="btn-action btn-delete" onclick="confirmDelete('${r.id}')" title="Delete">✕</button>
+        <td data-label="${t('description')}" class="desc-cell">
+          <div class="desc-text">${escapeHtml(r.comentarios)}</div>
+          <div class="desc-actions">
+            <button class="btn-action btn-edit" onclick='startEditRecord(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="Edit">✎</button>
+            <button class="btn-action btn-delete" onclick="confirmDelete('${r.id}')" title="Delete">✕</button>
+          </div>
         </td>
       </tr>
     `).join('');
