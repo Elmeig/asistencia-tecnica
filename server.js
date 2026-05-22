@@ -72,6 +72,31 @@ function saveRecords(records) {
 let records = loadRecords();
 
 // ─── Helpers ─────────────────────────────────────────
+// ─── CORS allowlist ──────────────────────────────────
+// Parse ALLOWED_ORIGINS env var, fall back to safe defaults.
+// Use 'null' (the literal string) when the request origin isn't allowed —
+// this prevents browsers from honoring the cross-origin response.
+const ALLOWED_ORIGINS = new Set(
+  (process.env.ALLOWED_ORIGINS ||
+   'https://bugtracker.tail51f3b0.ts.net,http://127.0.0.1:3001,http://127.0.0.1:3002,http://localhost:3001,http://localhost:3002'
+  ).split(',').map(s => s.trim()).filter(Boolean)
+);
+
+function resolveCorsOrigin(req) {
+  const origin = req.headers && req.headers.origin;
+  if (!origin) return null; // same-origin or non-browser; omit header
+  return ALLOWED_ORIGINS.has(origin) ? origin : 'null';
+}
+
+function corsHeaders(res) {
+  const origin = res._cors_origin;
+  if (origin === null || origin === undefined) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Vary': 'Origin',
+  };
+}
+
 function parseBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -83,19 +108,17 @@ function parseBody(req) {
 }
 
 function json(res, data, status = 200) {
-  res.writeHead(status, {
+  res.writeHead(status, Object.assign({
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-  });
+  }, corsHeaders(res)));
   res.end(JSON.stringify(data));
 }
 
 function cors(res) {
-  res.writeHead(204, {
-    'Access-Control-Allow-Origin': '*',
+  res.writeHead(204, Object.assign({
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  });
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  }, corsHeaders(res)));
   res.end();
 }
 
@@ -167,6 +190,9 @@ const server = http.createServer(async (req, res) => {
   const method = req.method;
   const urlPath = req.url.split('?')[0];
   const query = parseQS(req.url);
+
+  // Resolve CORS origin once per request; attach to res for downstream helpers
+  res._cors_origin = resolveCorsOrigin(req);
 
   // CORS preflight
   if (method === 'OPTIONS') return cors(res);
@@ -392,12 +418,11 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/api/export' && method === 'GET') {
     const filtered = filterRecords(query);
     const buf = buildXlsx(filtered);
-    res.writeHead(200, {
+    res.writeHead(200, Object.assign({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': 'attachment; filename="Asistencia_Tecnica.xlsx"',
       'Content-Length': buf.length,
-      'Access-Control-Allow-Origin': '*',
-    });
+    }, corsHeaders(res)));
     return res.end(buf);
   }
 
