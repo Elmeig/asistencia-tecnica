@@ -403,6 +403,12 @@ const server = http.createServer(async (req, res) => {
 
   // ── Static files ──
   let filePath = path.join(__dirname, 'public', urlPath === '/' ? 'index.html' : urlPath);
+  // Security: prevent path traversal escaping the public directory
+  const publicDir = path.join(__dirname, 'public');
+  if (!filePath.startsWith(publicDir + path.sep) && filePath !== publicDir) {
+    res.writeHead(403);
+    return res.end('Forbidden');
+  }
   if (!fs.existsSync(filePath)) {
     res.writeHead(404);
     return res.end('Not found');
