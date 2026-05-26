@@ -60,8 +60,8 @@
             <div class="field">
               <label data-i18n="machine">Machine</label>
               <div class="combobox-wrap">
-                <input type="text" id="new-torno" class="combobox-input" required autocomplete="off"
-                  placeholder="— Type or click to select —"
+                <input type="text" id="new-torno" class="combobox-input" autocomplete="off"
+                  placeholder="— Type or click to select (optional) —"
                   oninput="filterNewMachineDropdown(this.value)"
                   onclick="openNewMachineDropdown()"
                   onkeydown="handleNewMachineKeydown(event)">
@@ -160,7 +160,7 @@
       <!-- Upload -->
       <div class="card export-card">
         <h2>📤 <span>Import / Upload</span></h2>
-        <p>Upload an Excel (.xlsx) file to bulk-import records. Duplicate records (same Customer + Machine + Date + Technician) are skipped or updated with new data.</p>
+        <p>Upload an Excel (.xlsx) file to bulk-import records. Rows with identical Customer + Machine + Date + Technician + Description are skipped as duplicates; everything else is added. To edit an existing record, open it in the UI.</p>
         <input type="file" id="upload-file" accept=".xlsx,.xls" style="display:none;" onchange="handleFileSelect(this)">
         <button class="btn btn-upload" onclick="document.getElementById('upload-file').click()">
           📂 Choose file

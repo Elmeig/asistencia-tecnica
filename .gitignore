@@ -1,2 +1,8 @@
 node_modules/
 .env
+
+# Local data & artifacts (live application state, not source)
+data/backups/
+data/*.bak.*
+logs/
+*.log

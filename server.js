@@ -24,29 +24,57 @@ const MIME = {
 };
 
 // ─── Load records from xlsx into memory + JSON cache ─
+// Normalize any fecha value (Excel serial number, Date object, or string)
+// to ISO 'YYYY-MM-DD'. Returns '' for empty/invalid input. Keeps unknown
+// string formats as-is (trimmed) so legacy free-text dates aren't lost.
+function normalizeFecha(value) {
+  if (value === null || value === undefined || value === '') return '';
+  // Excel serial number (days since 1899-12-30)
+  if (typeof value === 'number' && isFinite(value)) {
+    const d = new Date(Math.round((value - 25569) * 86400000));
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return '';
+  }
+  // Date object (XLSX with cellDates:true)
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    // Use UTC components — the cell has no timezone, treat date-only.
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(value.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(value).trim();
+  if (!s) return '';
+  // Already ISO?
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // dd/mm/yyyy or dd-mm-yyyy
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    let [, dd, mm, yy] = m;
+    if (yy.length === 2) yy = (Number(yy) < 50 ? '20' : '19') + yy;
+    return `${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+  }
+  // Numeric string that's actually an Excel serial
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const n = Number(s);
+    if (n > 10000 && n < 80000) return normalizeFecha(n);
+  }
+  return s; // unknown free-text, keep as-is
+}
+
 function loadFromXlsx() {
-  const wb = XLSX.readFile(XLSX_FILE);
+  const wb = XLSX.readFile(XLSX_FILE, { cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
   const records = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r || !r.some(c => c !== undefined && c !== '')) continue;
-    // Date: Excel serial number → ISO string
-    let fecha = r[2];
-    if (typeof fecha === 'number') {
-      const d = new Date((fecha - 25569) * 86400000);
-      fecha = d.toISOString().slice(0, 10);
-    } else if (fecha) {
-      fecha = String(fecha);
-    } else {
-      fecha = '';
-    }
     records.push({
       id: uuidv4(),
       cliente: String(r[0] || '').trim(),
       torno: String(r[1] || '').trim(),
-      fecha,
+      fecha: normalizeFecha(r[2]),
       tecnico: String(r[3] || '').trim(),
       comentarios: String(r[4] || '').trim(),
     });
@@ -70,6 +98,29 @@ function saveRecords(records) {
 }
 
 let records = loadRecords();
+
+// Reload records.json whenever it changes on disk (e.g. obsidian-sync daemon
+// appends new records from Obsidian Inbox notes). Without this the server
+// would keep its in-memory copy and never see external writes.
+try {
+  fs.watch(JSON_FILE, { persistent: false }, () => {
+    // Debounce: filesystem watchers can fire multiple events per write
+    clearTimeout(records._reloadTimer);
+    const t = setTimeout(() => {
+      try {
+        const fresh = loadRecords();
+        records = fresh;
+        console.log(`[${new Date().toISOString()}] records.json reloaded — ${records.length} records`);
+      } catch (e) {
+        console.error('records reload failed:', e.message);
+      }
+    }, 250);
+    if (records && typeof records === 'object') records._reloadTimer = t;
+  });
+  console.log(`[${new Date().toISOString()}] watching ${JSON_FILE} for changes`);
+} catch (e) {
+  console.warn('fs.watch on records.json failed:', e.message);
+}
 
 // ─── Helpers ─────────────────────────────────────────
 // ─── CORS allowlist ──────────────────────────────────
@@ -262,8 +313,8 @@ const server = http.createServer(async (req, res) => {
         tecnico: String(body.tecnico || '').trim(),
         comentarios: String(body.comentarios || '').trim(),
       };
-      if (!record.cliente || !record.torno || !record.tecnico) {
-        return json(res, { error: 'Missing required fields' }, 400);
+      if (!record.cliente || !record.tecnico) {
+        return json(res, { error: 'Missing required fields (cliente, tecnico)' }, 400);
       }
       records.push(record);
       saveRecords(records);
@@ -289,8 +340,8 @@ const server = http.createServer(async (req, res) => {
         tecnico: String(body.tecnico || '').trim(),
         comentarios: String(body.comentarios || '').trim(),
       };
-      if (!updated.cliente || !updated.torno || !updated.tecnico) {
-        return json(res, { error: 'Missing required fields' }, 400);
+      if (!updated.cliente || !updated.tecnico) {
+        return json(res, { error: 'Missing required fields (cliente, tecnico)' }, 400);
       }
       records[idx] = updated;
       saveRecords(records);
@@ -334,13 +385,13 @@ const server = http.createServer(async (req, res) => {
 
       let workbook;
       try {
-        workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+        workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true });
       } catch (e) {
         return json(res, { error: 'Invalid xlsx file' }, 400);
       }
 
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
 
       if (rows.length < 2) {
         return json(res, { error: 'File has no data rows' }, 400);
@@ -361,54 +412,52 @@ const server = http.createServer(async (req, res) => {
         return json(res, { error: `Missing columns: ${missing.join(', ')}` }, 400);
       }
 
-      // Build a quick lookup key: "cliente|torno|teamDate|tecnico"
+      // Dedup key now INCLUDES comentarios — multiple distinct asistencias
+      // can happen on the same day, same machine, same technician. The actual
+      // service content is what distinguishes one visit from another, so the
+      // body of the record is part of the identity.
+      //
+      // Behaviour:
+      //   - Exact match (cliente+torno+fecha+tecnico+comentarios identical) → skip
+      //   - Anything else                                                   → insert
+      // There is no "update" path on xlsx upload; to amend a record, edit it
+      // inline in the UI (or via the API) where the record id is known.
       const keyFor = (r) => [
         norm(r.cliente),
         norm(r.torno),
         String(r.fecha || '').trim(),
         norm(r.tecnico),
+        (r.comentarios || '').trim(),
       ].join('|');
 
       const existingKeys = new Set(records.map(keyFor));
 
-      let inserted = 0, updated = 0, skipped = 0;
+      let inserted = 0, skipped = 0;
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         const cliente     = String(row[colMap.cliente]    || '').trim();
         const torno       = String(row[colMap.torno]      || '').trim();
-        const fecha       = String(row[colMap.fecha]       || '').trim();
+        const fecha       = normalizeFecha(row[colMap.fecha]);
         const tecnico     = String(row[colMap.tecnico]    || '').trim();
         const comentarios = String(row[colMap.comentarios] || '').trim();
 
-        if (!cliente || !torno || !tecnico) continue; // skip invalid rows
+        if (!cliente || !tecnico) continue; // skip invalid rows (torno optional)
 
         const newRecord = { cliente, torno, fecha, tecnico, comentarios };
         const key = keyFor(newRecord);
 
         if (existingKeys.has(key)) {
-          // Find and update existing record
-          const idx = records.findIndex(r => keyFor(r) === key);
-          if (idx !== -1) {
-            const same = records[idx].comentarios === comentarios;
-            if (!same) {
-              records[idx] = { ...records[idx], comentarios };
-              updated++;
-            } else {
-              skipped++;
-            }
-          } else {
-            skipped++;
-          }
+          skipped++;
         } else {
           records.push({ id: uuidv4(), ...newRecord });
-          inserted++;
           existingKeys.add(key); // prevent duplicates within same upload
+          inserted++;
         }
       }
 
       saveRecords(records);
-      return json(res, { inserted, updated, skipped, total: records.length });
+      return json(res, { inserted, skipped, total: records.length });
     });
 
     req.pipe(busboy);

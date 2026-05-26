@@ -939,9 +939,9 @@ async function uploadXlsx(file) {
       return;
     }
 
-    const { inserted, updated, skipped, total } = data;
+    const { inserted, skipped, total } = data;
     result.innerHTML =
-      `✓ Done! Inserted: <b>${inserted}</b> · Updated: <b>${updated}</b> · Skipped: <b>${skipped}</b> · Total records: <b>${total}</b>`;
+      `✓ Done! Inserted: <b>${inserted}</b> · Skipped (duplicates): <b>${skipped}</b> · Total records: <b>${total}</b>`;
     result.className = 'feedback show success';
 
     // Refresh records
@@ -976,7 +976,7 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
     comentarios: document.getElementById('new-comentarios').value.trim(),
   };
 
-  if (!data.cliente || !data.torno || !data.tecnico) {
+  if (!data.cliente || !data.tecnico) {
     showFeedback(t('required'), 'error');
     return;
   }
