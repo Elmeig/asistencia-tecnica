@@ -6,3 +6,4 @@ data/backups/
 data/*.bak.*
 logs/
 *.log
+graphify-out/

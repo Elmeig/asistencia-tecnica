@@ -811,7 +811,7 @@ function renderPage() {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:2rem;">${t('noRecords')}</td></tr>`;
   } else {
     tbody.innerHTML = pageRecords.map(r => `
-      <tr>
+      <tr data-record-id="${escapeHtml(r.id || '')}">
         <td data-label="${t('customer')}">${escapeHtml(r.cliente)}</td>
         <td data-label="${t('machine')}">${escapeHtml(r.torno)}</td>
         <td data-label="${t('date')}">${escapeHtml(r.fecha)}</td>
@@ -1039,6 +1039,48 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
   // Populate date datalist
   const dates = [...new Set(currentRecords.map(r => r.fecha).filter(Boolean))].sort().reverse();
   populateDateDatalist(dates);
+
+  // === Deep-link from Bug Tracker: ?cliente=X or ?record=Y ===
+  const params = new URLSearchParams(window.location.search);
+  const linkedCustomer = params.get('cliente');
+  const linkedRecordId = params.get('record');
+  if (linkedRecordId) {
+    // Fetch the full record list (cached in currentRecords already) and show ONLY that one
+    const rec = currentRecords.find(r => r.id === linkedRecordId);
+    if (rec) {
+      switchTab('list');
+      // Show a banner indicating the deep-link state + a clear button
+      const tbody = document.getElementById('results-body');
+      const panel = document.getElementById('panel-records');
+      if (panel && !document.getElementById('deeplink-banner')) {
+        const banner = document.createElement('div');
+        banner.id = 'deeplink-banner';
+        banner.style.cssText = 'background:var(--accent,#6366f1);color:#fff;padding:8px 12px;border-radius:6px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-size:13px';
+        banner.innerHTML = `
+          <span>🔗 Mostrando 1 registro enlazado desde Bug Tracker</span>
+          <button id="deeplink-clear" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px">Ver todos</button>
+        `;
+        panel.insertBefore(banner, panel.firstChild);
+        document.getElementById('deeplink-clear').addEventListener('click', async () => {
+          banner.remove();
+          // Strip query string without reload
+          window.history.replaceState({}, '', window.location.pathname);
+          const result = await fetchRecords();
+          currentRecords = result.records;
+          currentPage = 1;
+          renderPage();
+        });
+      }
+      // Replace currentRecords with just this one
+      currentRecords = [rec];
+      currentPage = 1;
+      renderPage();
+    }
+  } else if (linkedCustomer) {
+    switchTab('list');
+    document.getElementById('f-cliente').value = linkedCustomer;
+    await applyFilters();
+  }
 
   // Populate customer datalist for new-record autocomplete (DEPRECATED — now using combobox)
 
