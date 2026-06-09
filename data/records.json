@@ -1,11 +1,91 @@
 [
   {
+    "id": "393302f3-25bf-4a71-ac03-6e6bc7b57aa2",
+    "cliente": "Mark'ennovy",
+    "torno": "R400-107",
+    "fecha": "2026-06-04",
+    "tecnico": "RICARDO",
+    "comentarios": "Fallo de comunicación por haber cambiado de usuario. \n\nSolución: dar permiso a NCpccom y Melhmi. También añadir NCpccom y Softlens en la carpeta de startup"
+  },
+  {
+    "id": "8ee3b48d-14a7-44a1-851e-f7ee94a996de",
+    "cliente": "3S MEDICAL",
+    "torno": "R300-071",
+    "fecha": "2026-05-31",
+    "tecnico": "MEHDI",
+    "comentarios": "Para que tengan una versión mas actual y parecida a la de la R400 actualizo. Softlens 8.1.4.5, a la versión Softlens 11.0.0.81. PLC de la versión REM_PLCL_V3.21_220907, a la versión REM_PLCL_V5.12_240722. PLC-CNC de la versión PLC_M8_REM_220620, a la versión PLC_M8_REM_240527. Y pongo los mismos programas de CNC. Repasamos los programas de calibración y cortamos lentes tanto Side 1 como Side 2. A parte hicimos el Side 1 en la R400 y el Side 2 en la R300 para verificar que el espesor sale bien."
+  },
+  {
+    "id": "8efc6dcd-75dd-4491-87b6-dad6553ef52e",
+    "cliente": "DR LENS",
+    "torno": "R400-192",
+    "fecha": "2026-05-29",
+    "tecnico": "RICARDO",
+    "comentarios": "Actualizar a la versión 15.3.2.0\n\nActivar modo precisión y configurar material con nuevos parámetros (microns / vuelta)"
+  },
+  {
+    "id": "cc37aaf1-f6ae-46d3-9609-7125e582ca6d",
+    "cliente": "Mark'ennovy",
+    "torno": "R400-107",
+    "fecha": "2026-05-28",
+    "tecnico": "MEHDI",
+    "comentarios": "En el nuevo ordenador hay que copiar la carpeta de configuración de Focal Point sino no arranca. Copiamos la carpeta FPWREM del ordenador antiguo y funcionó"
+  },
+  {
+    "id": "795b9950-7178-4804-8cbd-2c3450b2e45b",
+    "cliente": "VER MEXICO",
+    "torno": "R400-122",
+    "fecha": "2026-05-28",
+    "tecnico": "MEHDI",
+    "comentarios": "Había un diseño esférico genérico (Trinity) de Hugo Legaria que daba error : Por favor introduzca valores validos. Fue un error en el Excel; en la hoja de OUTPUT GEOMETRY están dando valores de 0 a los radios steep back, cuando tienen que estar vacíos. Al borrar los 0 dejo de dar error."
+  },
+  {
+    "id": "f6bb9647-049a-467b-abda-1e8bb6f0ae55",
+    "cliente": "SILVER LINE",
+    "torno": "R400-187",
+    "fecha": "2026-05-27",
+    "tecnico": "MEHDI",
+    "comentarios": "El prisma sale vibrado, hay que configurar el material para que haga desbaste tórico. Actualizo de la versión de Softlens 14.4.12.0 a la versión 14.5.38. Añadir 8322 y 8422 para que puedan hacer tórico roughing."
+  },
+  {
+    "id": "77909755-3b56-4cb0-b1c5-539cb4a0dc89",
+    "cliente": "SILVER LINE",
+    "torno": "R400-175",
+    "fecha": "2026-05-27",
+    "tecnico": "MEHDI",
+    "comentarios": "Actualizo de la versión de Softlens 14.4.12.0 a la versión 14.5.38. Añadir 8322 y 8422 para que puedan hacer tórico roughing."
+  },
+  {
+    "id": "55d2f0c7-0627-4395-867d-e7d4ad0855d7",
+    "cliente": "Mark'ennovy",
+    "torno": "R400-107",
+    "fecha": "2026-05-27",
+    "tecnico": "MEHDI",
+    "comentarios": "Al intentar hacer la prueba de eje usando el minifile del eje daba error Windows por falta de la DLL msvcr100.dll. Tuve que cargar ambas, la de 32 y 64bit. También actualice Softlens a la versión 14.5.39.0 que corregía un fallo relacionado con ese minifile"
+  },
+  {
+    "id": "f8c6aebf-43ea-486a-8c1d-d0f342b619f8",
+    "cliente": "OCULENTI",
+    "torno": "R400-151",
+    "fecha": "2026-05-26",
+    "tecnico": "MEHDI",
+    "comentarios": "Contacté con Djoey para intentar instalar la versión de Netcore con las correcciones de las espejadas relacionadas con el cambio de herramientas. Me comenta que están usando las dos herramientas del ASG2 y ASG3, que están a izquierdas para hacer tanto backs como front. Sin embargo la del ASG1 que esta a derechas no la usan porque las lentes salen espejadas. Por otra parte ha reportado que algunos casos de lentes con cilindro front aunque al inspeccionarlos dan bien de potencia, cilindro y eje, cuando se las ponen al paciente las lentes no se colocan en sus grados. Como si estuvieran giradas unas 90-100 grados. De momento no quieren actualizar. Esperamos a que nos den permiso"
+  },
+  {
     "id": "88897575-6d4c-4a30-9049-fb4c635d2af8",
     "cliente": "VER MEXICO",
     "torno": "R400-122",
     "fecha": "2026-05-25",
     "tecnico": "MEHDI",
-    "comentarios": "Instalar Netcore a la versión 15.3.2.0 resolviendo el problema de front tórico alineado antes tenían 11.0.2.15. Actualizo PLC de V 5.11 a V 7.02 y el PLC-CNC de PLC_M8_REM_240527 a V 6.8. Añadir la llamada del CNC a 8322 y 8422 ya que su versión de Softlens no los generaba y ahora si.\nHemos revisado los offset del back y del prisma, falta revisar los del front tórico y si están ok hacer la bitorica y probar el el alinear front tórico on"
+    "comentarios": "Instalar Netcore a la versión 15.3.2.0 resolviendo el problema de front tórico alineado antes tenían 11.0.2.15. Actualizo PLC de V 5.11 a la V 7.02 y el PLC-CNC de PLC_M8_REM_240527 a V 6.8. Añadir la llamada del CNC a 8322 y 8422 ya que su versión de Softlens no los generaba y ahora si.\nHemos revisado los offset del back y del prisma, falta revisar los del front tórico y si están ok hacer la bitorica y probar el el alinear front tórico on"
+  },
+  {
+    "id": "d50402d0-e770-4777-a60f-5cc8576ed914",
+    "cliente": "Mark'ennovy",
+    "torno": "R400-107",
+    "fecha": "2026-05-25",
+    "tecnico": "MEHDI",
+    "comentarios": "Cambio el Pc por petición del cliente porque el original iba lento. Instalo la versión de Softlens 14.5.38.0 y actualizo PLC a la versión 7.02 y el PLC-CNC a la versión 6.8. Añadir 8322 y 8422. Cargo backup de Softlens del ordenador antiguo y compruebo que Softlens arranca. Queda pendiente que los chicos de IT instalen y preparen el pc para producción"
   },
   {
     "id": "f370ab1a-0891-47e9-abc7-9dea442cb3b9",
@@ -13,7 +93,7 @@
     "torno": "LML-016",
     "fecha": "2026-05-22",
     "tecnico": "MARCELO",
-    "comentarios": "El cliente informo que el software no aceptaba coma e nem punto, se realizo el cambio del idioma de espanol a ingles fasta que se corrija el software"
+    "comentarios": "El cliente informo que el software no aceptaba coma ni punto, se realizo el cambio del idioma de español al ingles hasta que se corrija el software"
   },
   {
     "id": "a3ca93c5-ac1d-48e9-a440-e4894dca984c",
@@ -145,7 +225,7 @@
   },
   {
     "id": "e3d2ecea-d87c-4ad9-abb2-d18d3bc7b7fa",
-    "cliente": "3S Medical",
+    "cliente": "3S MEDICAL",
     "torno": "R300-071",
     "fecha": "2026-04-13",
     "tecnico": "RICARDO",
@@ -385,7 +465,7 @@
   },
   {
     "id": "6dcfa968-3d4a-4ac2-b027-9460964292dd",
-    "cliente": "3S Medical",
+    "cliente": "3S MEDICAL",
     "torno": "R300-071",
     "fecha": "2026-02-09",
     "tecnico": "RICARDO",
@@ -409,7 +489,7 @@
   },
   {
     "id": "353b3b90-b5b4-45fd-8132-f3eadf38a67e",
-    "cliente": "3S Medical",
+    "cliente": "3S MEDICAL",
     "torno": "R300-071",
     "fecha": "2026-02-09",
     "tecnico": "RICARDO",
@@ -458,7 +538,7 @@
   {
     "id": "97796f01-a67a-4177-bec2-f4497d689368",
     "cliente": "VER MEXICO",
-    "torno": "R400-153",
+    "torno": "R400-122",
     "fecha": "2026-02-03",
     "tecnico": "RICARDO",
     "comentarios": "He instalado los diseños que nos ha pedido Hugo Legariaen la maquina de Alejandro."
@@ -809,7 +889,7 @@
   },
   {
     "id": "318a11e8-e434-4481-b5bb-b5226e950325",
-    "cliente": "3S Medical",
+    "cliente": "3S MEDICAL",
     "torno": "R300-071",
     "fecha": "2025-09-22",
     "tecnico": "RICARDO",
@@ -6792,11 +6872,19 @@
     "comentarios": "Training sobre lentes insertos de china.  Les instalo la version 233.  Cortamos unos front y les explico mo afecta si no tienen la curva base bien tomada.  Medimos el inserto y tienen BCH 8,6 y DIAMH 14,20.  Detecto yo algunos fallos en la pantalla de SOLEKO. Quedo con ellos seguir con training el viernes 29 de mayo."
   },
   {
-    "id": "f8c6aebf-43ea-486a-8c1d-d0f342b619f8",
-    "cliente": "OCULENTI",
-    "torno": "R400-151",
-    "fecha": "2026-05-26",
+    "id": "5234fa97-df04-4ecb-9f17-15ea7766ff20",
+    "cliente": "COSMOVISION",
+    "torno": "R400-188",
+    "fecha": "2026-06-04",
     "tecnico": "MEHDI",
-    "comentarios": "Contacté con Djoey para intentar instalar la versión de Netcore con las correcciones de las espejadas relacionadas con el cambio de herramientas. Me comenta que están usando las dos herramientas del ASG2 y ASG3, que están a izquierdas para hacer tanto backs como front. Sin embargo la del ASG1 que esta a derechas no la usan porque las lentes salen espejadas. Por otra parte ha reportado que algunos casos de lentes con cilindro front aunque al inspeccionarlos dan bien de potencia, cilindro y eje, cuando se las ponen al paciente las lentes no se colocan en sus grados. Como si estuvieran giradas unas 90-100 grados. De momento no quieren actualizar. Esperamos a que nos den permiso"
+    "comentarios": "Actualizo Softlens de framework 14.5.39.0 a Netcore 15.3.3.105"
+  },
+  {
+    "id": "b74e948d-3adf-4bd1-a1dd-b53565a94731",
+    "cliente": "COSMOVISION",
+    "torno": "R400-188",
+    "fecha": "2026-06-09",
+    "tecnico": "MEHDI",
+    "comentarios": "Actualizo Softlens a la versión 15.3.3.106 para corregir la falta de #530+#564 de los front tóricos con #559 con back tórico."
   }
 ]
